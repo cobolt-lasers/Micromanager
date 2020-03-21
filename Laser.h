@@ -80,14 +80,14 @@ public:
     Property<Power>*                         maxPowerSetpoint;
     Property<Power>*                         powerReading; // GetLaserPowerOutput()
     
-    MutableProperty<laser::toggle::type>*    on; // GetLaserStatus() / SetLaserStatus()
+    MutableProperty<laser::toggle::type>*    toggle; // GetLaserStatus() / SetLaserStatus()
     MutableProperty<bool>*                   paused; // SetLaserPauseCommand()
     MutableProperty<laser::run_mode::type>*  runMode; // GetOperatingMode() / SetLaserOperatingMode()
                                              
-    MutableProperty<laser::flag::type>*      digitalModulationState; // GetDigitalModulationState() / SetDigitalModulationState()
-    MutableProperty<std::string>*            analogModulationState; // GetAnalogModulationState() / SetAnalogModulationState()
+    MutableProperty<laser::flag::type>*      digitalModulationFlag; // GetDigitalModulationState() / SetDigitalModulationState()
+    MutableProperty<laser::flag::type>*      analogModulationFlag; // GetAnalogModulationState() / SetAnalogModulationState()
     MutableProperty<Power>*                  modulationPowerSetpoint; // GetModulationPowerSetting() / SetModulationPowerSetting()
-    MutableProperty<std::string>*            analogImpedanceState; // GetAnalogImpedanceState() / SetAnalogImpedanceState()
+    MutableProperty<std::string>*            analogImpedance; // GetAnalogImpedanceState() / SetAnalogImpedanceState()
 
 private:
 
