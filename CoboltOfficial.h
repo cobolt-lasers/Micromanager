@@ -33,7 +33,7 @@ using namespace std;
 #define ERR_LASER_OPERATING_MODE_NOT_SUPPORTED   101005
 #define ERR_CANNOT_SET_MODE_OFF                  101006
 
-class CoboltOfficial : public CShutterBase<CoboltOfficial>, public cobolt::LaserDevice, public cobolt::Logger::Gateway
+class CoboltOfficial : public CShutterBase<CoboltOfficial>, public cobolt::LaserDevice, public cobolt::Logger::Gateway, public cobolt::GuiEnvironment
 {
 public:
 

@@ -11,6 +11,7 @@
 
 using namespace std;
 using namespace cobolt;
+using namespace laser;
 
 Laser::Laser()
 {}
@@ -68,28 +69,29 @@ void Laser::Adapt()
 
     ClearProperties();
 
-    properties_[ laser::property::firmware_version           ] = new DefaultProperty(           laser::property::firmware_version,            device_, "gfv?"                   );
-    properties_[ laser::property::wavelength                 ] = new DefaultProperty(           laser::property::wavelength,                  device_, ""                       );
-    properties_[ laser::property::serial_number              ] = new DefaultProperty(           laser::property::serial_number,               device_, "gsn?"                   );
-    properties_[ laser::property::firmware_version           ] = new DefaultProperty(           laser::property::firmware_version,            device_, ""                       );
-    properties_[ laser::property::operating_hours            ] = new DefaultProperty(           laser::property::operating_hours,             device_, "hrs?"                   );
+    properties_[ property::firmware_version           ] = new DefaultProperty<std::string>                    ( property::firmware_version,            device_, "gfv?"                        );
+    properties_[ property::wavelength                 ] = new DefaultProperty<std::string>                    ( property::wavelength,                  device_, ""                            );
+    properties_[ property::serial_number              ] = new DefaultProperty<std::string>                    ( property::serial_number,               device_, "gsn?"                        );
+    properties_[ property::firmware_version           ] = new DefaultProperty<std::string>                    ( property::firmware_version,            device_, ""                            );
+    properties_[ property::operating_hours            ] = new DefaultProperty<std::string>                    ( property::operating_hours,             device_, "hrs?"                        );
 
-    properties_[ laser::property::current_setpoint           ] = new DefaultMutableProperty(    laser::property::current_setpoint,            device_, "glc?",      "slc"       );
-    properties_[ laser::property::max_current_setpoint       ] = new DefaultProperty(           laser::property::max_current_setpoint,        device_, ""                       );
-    properties_[ laser::property::current_reading            ] = new DefaultProperty(           laser::property::current_reading,             device_, "i?"                     );
-    properties_[ laser::property::power_setpoint             ] = new DefaultMutableProperty(    laser::property::power_setpoint,              device_, "p?",        "slp"       );
-    properties_[ laser::property::max_power_setpoint         ] = new DefaultProperty(           laser::property::max_power_setpoint,          device_, ""                       );
-
-    properties_[ laser::property::power_reading              ] = new DefaultProperty(           laser::property::power_reading,               device_, "pa?"                    );
-    properties_[ laser::property::toggle                     ] = new LaserOnProperty(           laser::property::toggle,                      device_                           );
-    properties_[ laser::property::paused                     ] = new LaserPausedProperty(       laser::property::paused,                      device_                           );
-    properties_[ laser::property::run_mode                   ] = new LaserRunModeProperty(      laser::property::run_mode,                    device_                           );
-    properties_[ laser::property::digital_modulation_flag    ] = new MutableFlagProperty(       laser::property::digital_modulation_flag,     device_, "gdmes?",    "sdmes"     );
+    properties_[ property::current_setpoint           ] = new DefaultMutableProperty<double>                  ( property::current_setpoint,            device_, "glc?",      "slc"            );
+    properties_[ property::max_current_setpoint       ] = new MaxLaserCurrentProperty<double>                 ( property::max_current_setpoint,        device_, ""                            );
+    properties_[ property::current_reading            ] = new DefaultProperty<double>                         ( property::current_reading,             device_, "i?"                          );
+    properties_[ property::power_setpoint             ] = new DefaultMutableProperty<double>                  ( property::power_setpoint,              device_, "p?",        "slp"            );
+    properties_[ property::max_power_setpoint         ] = new DefaultProperty<double>                         ( property::max_power_setpoint,          device_, ""                            );
     
-    properties_[ laser::property::analog_modulation_flag     ] = new DefaultProperty(           laser::property::analog_modulation_flag,      device_, "games?",    "sames"     );
-    properties_[ laser::property::modulation_power_setpoint  ] = new DefaultProperty(           laser::property::modulation_power_setpoint,   device_, ""                       );
-    properties_[ laser::property::analog_impedance           ] = new DefaultProperty(           laser::property::analog_impedance,            device_, ""                       );
+    properties_[ property::power_reading              ] = new DefaultProperty<double>                         ( property::power_reading,               device_, "pa?"                         );
+    properties_[ property::toggle                     ] = new ToggleProperty                                  ( property::toggle,                      device_, "l?",        "l0",      "l1"  );
+    properties_[ property::paused                     ] = new LaserPausedProperty                             ( property::paused,                      device_                                );
+    properties_[ property::run_mode                   ] = new DefaultMutableProperty<run_mode::type>          ( property::run_mode,                    device_, "gam?", "sam"                 );
+    properties_[ property::digital_modulation_flag    ] = new DefaultMutableProperty<flag::type>              ( property::digital_modulation_flag,     device_, "gdmes?",    "sdmes"          );
     
+    properties_[ property::analog_modulation_flag     ] = new DefaultMutableProperty<flag::type>              ( property::analog_modulation_flag,      device_, "games?",    "sames"          );
+    properties_[ property::modulation_power_setpoint  ] = new DefaultMutableProperty<double>                  ( property::modulation_power_setpoint,   device_, "glmp?",     "slmp"           );
+    properties_[ property::analog_impedance           ] = new DefaultMutableProperty<analog_impedance::type>  ( property::analog_impedance,            device_, "galis?",    "salis"          );
+    
+    ( (MutableProperty*) properties_[ property::current_setpoint ] )->SetupWith( new RangeConstraint( 0.0f, properties_[ property::max_current_setpoint ]->Get<double>() ) );
 
     string model;
     device_->SendCommand( "glm?", model );

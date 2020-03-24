@@ -31,6 +31,81 @@ public:
     virtual int RegisterAllowedGuiPropertyRange( double min, double max ) = 0;
 };
 
+template <typename T>
+bool ResponseStringToGuiPropertyValue( std::string& string );
+const char* g_GuiPropertyValue_InvalidResponse = "Invalid Value";
+
+template <> bool ResponseStringToGuiPropertyValue<std::string>( std::string& string )
+{
+    return true;
+}
+
+template <> bool ResponseStringToGuiPropertyValue<double>( std::string& string )
+{
+    return true;
+}
+
+template <> bool ResponseStringToGuiPropertyValue<laser::analog_impedance::type>( std::string& string )
+{
+    const int value = atoi( string.c_str() );
+    if ( value != 0 && value != 1 ) { string = g_GuiPropertyValue_InvalidResponse; return false; }
+    string = laser::analog_impedance::ToString( ( laser::analog_impedance::type )value );
+    return true;
+}
+
+template <> bool ResponseStringToGuiPropertyValue<laser::flag::type>( std::string& string )
+{
+    const int value = atoi( string.c_str() );
+    if ( value != 0 && value != 1 ) { string = g_GuiPropertyValue_InvalidResponse; return false; }
+    string = laser::flag::ToString( ( laser::flag::type )value );
+    return true;
+}
+
+template <> bool ResponseStringToGuiPropertyValue<laser::run_mode::type>( std::string& string )
+{
+    const int value = atoi( string.c_str() );
+    if ( value != 0 && value != 1 ) { string = g_GuiPropertyValue_InvalidResponse; return false; }
+    string = laser::run_mode::ToString( ( laser::run_mode::type )value );
+    return true;
+}
+
+template <typename T>
+bool GuiPropertyValueToCommandArgument( std::string& string );
+
+template <> bool GuiPropertyValueToCommandArgument<std::string>( std::string& string )
+{
+    return true;
+}
+
+template <> bool GuiPropertyValueToCommandArgument<double>( std::string& string )
+{
+    return true;
+}
+
+template <> bool GuiPropertyValueToCommandArgument<laser::analog_impedance::type>( std::string& string )
+{
+    const laser::analog_impedance::type value = laser::analog_impedance::FromString( string );
+    if ( value == laser::analog_impedance::__undefined__ ) { return false; }
+    string = std::to_string( (_Longlong) value );
+    return true;
+}
+
+template <> bool GuiPropertyValueToCommandArgument<laser::flag::type>( std::string& string )
+{
+    const laser::flag::type value = laser::flag::FromString( string );
+    if ( value == laser::flag::__undefined__ ) { return false; }
+    string = std::to_string( (_Longlong) value );
+    return true;
+}
+
+template <> bool GuiPropertyValueToCommandArgument<laser::run_mode::type>( std::string& string )
+{
+    const laser::run_mode::type value = laser::run_mode::FromString( string );
+    if ( value == laser::run_mode::__undefined__ ) { return false; }
+    string = std::to_string( (_Longlong) value );
+    return true;
+}
+
 class Property
 {
 public:
@@ -60,7 +135,7 @@ public:
      *
      * \attention Takes object ownership.
      */
-    void setupWith( FetchValueModifier* fetchValueModifier )
+    void SetupWith( FetchValueModifier* fetchValueModifier )
     {
         if ( fetchValueModifier_ != NULL ) {
             delete fetchValueModifier_;
@@ -103,6 +178,20 @@ public:
         
         return result;
     }
+
+    template <typename T> T Get() const;
+    template <> double Get() const
+    {
+        std::string string;
+        const int result = FetchAsString( string );
+        
+        if ( result != DEVICE_OK ) {
+            return 0.0f;
+        }
+        
+        return atof( string.c_str() );
+    }
+
 
     virtual int FetchAsString( std::string& string ) const = 0;
 
@@ -198,16 +287,6 @@ private:
 };
 
 template <typename T>
-void FormatString( std::string& string );
-
-template <> void FormatString<laser::flag::type>( std::string& string )
-{
-    if ( string == "1" ) {
-        string = "O";
-    }
-}
-
-template <typename T>
 class DefaultProperty : public Property
 {
 public:
@@ -222,7 +301,7 @@ public:
     {
         const int result = laserDevice_->SendCommand( getCommand_, string );
 
-        FormatString<T>( string );
+        ResponseStringToGuiPropertyValue<T>( string );
 
         return result;
     }
@@ -233,6 +312,7 @@ private:
     const std::string getCommand_;
 };
 
+template <typename T>
 class DefaultMutableProperty : public MutableProperty
 {
 public:
@@ -254,6 +334,11 @@ public:
         std::string value;
         
         guiProperty->Get( value );
+
+        if ( !GuiPropertyValueToCommandArgument<T>( value ) ) {
+            return DEVICE_INVALID_PROPERTY_VALUE;
+        }
+
         std::string preparedSetCommand = setCommand_ + " " + value;
         
         const int result = laserDevice_->SendCommand( preparedSetCommand, response );
@@ -305,7 +390,7 @@ public:
         max_( max )
     {}
     
-    virtual void ExportConstraintToGui( GuiEnvironment* environment ) const
+    virtual void ExportToGuiEnvironment( GuiEnvironment* environment ) const
     {
         environment->RegisterAllowedGuiPropertyRange( min_, max_ );
     }
@@ -317,334 +402,5 @@ private:
 };
 
 NAMESPACE_COBOLT_END
-
-#if 0
-
-NAMESPACE_COBOLT_BEGIN
-
-class Laser;
-
-typedef MM::PropertyBase GuiProperty;
-
-/// ###
-/// Property Interfaces
-
-/**
- * T - Internal Type
- * S - Presented Type (in GUI)
- */
-template <typename T>
-class Property
-{
-public:
-
-    class FetchValueModifier
-    {
-    public:
-
-        virtual void ApplyOn( T& ) = 0;
-    };
-
-    Property( const char* name, LaserDevice* laserDevice ) :
-        laserDevice_( laserDevice ),
-        name_( name )
-    {}
-
-    virtual ~Property()
-    {
-        if ( modifier_ != NULL ) {
-            delete modifier_;
-        }
-    }
-
-    /**
-     * \brief Attaches a modifier that will the fetched value (e.g. if a certain model returns
-     *        amperes but want milliamperes).
-     *
-     * \attention Takes object ownership.
-     */
-    void setupWith( FetchValueModifier* fetchValueModifier )
-    {
-        if ( fetchValueModifier_ != NULL ) {
-            delete fetchValueModifier_;
-        }
-
-        fetchValueModifier_ = fetchValueModifier;
-    }
-
-    const char* Name() const
-    {
-        return name_;
-    }
-
-    /**
-     * \brief Retrieves the value from the laser and returns it if retrieval successful.
-     */
-    virtual T Fetch() const
-    {
-        return "";
-    }
-
-    bool FetchInto( GuiProperty& guiProperty ) const
-    {
-        switch ( guiProperty.GetType() ) {
-
-            case MM::PropertyType::Float:   return FetchInto<double>      ( guiProperty );
-            case MM::PropertyType::Integer: return FetchInto<long>        ( guiProperty );
-            case MM::PropertyType::String:  return FetchInto<std::string> ( guiProperty );
-        }
-
-        return false;
-    }
-
-    bool LastRequestSuccessful() const { return lastRequestSuccessful_; }
-
-protected:
-    
-    template <typename S> static S UnknownValue()           { return (S) -1; }
-    template <>           static std::string UnknownValue() { return UnknownValue<const char*>(); }
-    template <>           static const char* UnknownValue() { return "Unknown"; }
-    
-    void MarkRequestSuccessful() const { lastRequestSuccessful_ = true; }
-    void MarkRequestFailed() const { lastRequestSuccessful_ = false; }
-    
-    LaserDevice* const laserDevice_;
-    FetchValueModifier* fetchValueModifier_;
-
-private:
-
-    template <typename S>
-    bool FetchInto( GuiProperty& guiProperty ) const
-    {
-        const T value = Fetch();
-
-        if ( !LastRequestSuccessful() ) {
-
-            guiProperty.Set( UnknownValue );
-            return false;
-        }
-
-        guiProperty.Set( convert_to<S>( value ) );
-
-        return true;
-    }
-
-    const char* const name_;
-    mutable bool lastRequestSuccessful_;
-};
-
-template <typename T>
-class MutableProperty : public Property<T>
-{
-public:
-
-    MutableProperty( const char* name, LaserDevice* laserDevice ) :
-        Property<T>( name, laserDevice )
-    {}
-
-    virtual void Set( const T& value ) = 0;
-
-    bool SetFrom( const GuiProperty& guiProperty )
-    {
-        switch ( p.GetType() ) {
-
-            case MM::PropertyType::Float:   return SetFrom<double>      ( guiProperty );
-            case MM::PropertyType::Integer: return SetFrom<long>        ( guiProperty );
-            case MM::PropertyType::String:  return SetFrom<std::string> ( guiProperty );
-        }
-    }
-
-private:
-
-    template <typename S>
-    bool SetFrom( const GuiProperty& guiProperty )
-    {
-        S guiPropertyValue;
-        guiProperty->Get( guiPropertyValue );
-        
-        T value = convert_to<T>( guiPropertyValue );
-
-        Set( value );
-
-        if ( !LastRequestSuccessful() ) {
-            guiProperty->Set( UnknownValue<S>() );
-            return false;
-        }
-
-        return true;
-    }
-};
-
-/// ###
-/// Default Property Implementations
-
-template <typename T>
-class DefaultProperty : public Property<T>
-{
-public:
-
-    DefaultProperty( LaserDevice* laserDevice, const std::string& getCommand ) :
-        Property<T>( laserDevice ),
-        getCommand_( getCommand )
-    {}
-
-    virtual T Fetch() const
-    {
-        std::string value;
-        
-        if ( !laserDevice_->SendCommand( getCommand_, value ) ) {
-            MarkRequestFailed();
-            return T();
-        }
-
-        if ( fetchValueModifier_ != NULL ) {
-            fetchValueModifier_->ApplyOn( value );
-        }
-        
-        MarkRequestSuccessful();
-
-        return value;
-    }
-
-private:
-
-    const std::string getCommand_;
-};
-
-template <typename T>
-class DefaultMutableProperty : public MutableProperty<T>
-{
-public:
-    
-    DefaultMutableProperty( LaserDevice* laserDevice, const std::string& getCommand, const std::string& setCommand ) :
-        MutableProperty( laserDevice ),
-        getCommand_( getCommand ),
-        setCommand_( setCommand )
-    {}
-    
-    virtual T Fetch() const
-    {
-        std::string value;
-        
-        if ( !laserDevice_->SendCommand( getCommand_, value ) ) {
-            MarkRequestFailed();
-            return T();
-        }
-
-        if ( fetchValueModifier_ != NULL ) {
-            fetchValueModifier_->ApplyOn( value );
-        }
-
-        MarkRequestSuccessful();
-
-        return value;
-    }
-    
-    virtual void Set( const T& value )
-    {
-        std::string response;
-        std::string preparedSetCommand = setCommand_ + " " + std::to_string( value );
-        
-        if ( !laserDevice_->SendCommand( preparedSetCommand, response ) ) {
-            MarkRequestFailed();
-            return;
-        }
-        
-        MarkRequestSuccessful();
-    }
-
-private:
-
-    const std::string getCommand_;
-    const std::string setCommand_;
-};
-
-/// ###
-/// Specific Property Implementations
-
-class PausedProperty : public MutableProperty<bool>
-{
-public:
-
-    PausedProperty( const char* name, LaserDevice* laserDevice ) :
-        MutableProperty<bool>( name, laserDevice ),
-        paused_( false )
-    {}
-
-    bool Fetch() const
-    {
-        MarkRequestSuccessful();
-        return paused_;
-    }
-
-    virtual void Set( const bool& doPause )
-    {
-        std::string response;
-
-        if ( doPause ) {
-            laserDevice_->SendCommand( "l0r", response );
-        } else {
-            laserDevice_->SendCommand( "l1r", response );
-        }
-        
-        if ( response == "OK" ) {
-            MarkRequestSuccessful();
-            paused_ = doPause;
-        } else {
-            MarkRequestFailed();
-        }
-    }
-
-private:
-
-    bool paused_;
-};
-
-class MaxCurrentSetpointProperty : public Property<double>
-{
-public:
-    bool Fetch( double& ) const;
-};
-
-NAMESPACE_COBOLT_END
-
-#endif
-
-NAMESPACE_COBOLT_COMPATIBILITY_BEGIN( no_pause_command )
-
-// TODO: Continue on request
-//class PausedProperty : public MutableProperty<bool>
-//{
-//public:
-//    
-//    PausedProperty( Laser* );
-//    virtual bool Fetch() const;
-//    virtual void Set( const bool& value );
-//
-//private:
-//
-//    struct LaserState
-//    {
-//        std::string mode;
-//        double powerSetpoint; // outputPowerSetting
-//        double currentSetpoint; // driveCurrentSetting
-//        bool digitalModulationActive; // digitalModActive
-//        bool analogModulationActive; // analogModActive
-//        double modulationPowerSetpoint; // modPowerSetting
-//        std::string analogImpedance;
-//    };
-//
-//    void Pause();
-//    void Unpause();
-//
-//    Laser* laser_;
-//
-//    /**
-//     * The state of the laser that we need to preserve between pause and unpause.
-//     */
-//    LaserState* laserState_;
-//};
-
-NAMESPACE_COBOLT_COMPATIBILITY_END
 
 #endif // #ifndef __COBOLT__PROPERTY_H

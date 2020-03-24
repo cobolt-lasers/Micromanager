@@ -23,38 +23,30 @@ NAMESPACE_COBOLT_BEGIN
 
 namespace laser
 {
-    #define FOREACH_TOGGLE_VALUE( GENERATOR ) \
-        GENERATOR( off, 0,  "Off" ) \
-        GENERATOR( on,  1,  "On" )
-
-    namespace toggle { GENERATE_ENUM_STRING_MAP( FOREACH_TOGGLE_VALUE ); }
-
-    #undef FOREACH_TOGGLE_VALUE
-
-    #define FOREACH_FLAG_VALUE( GENERATOR ) \
-        GENERATOR( disabled,    0,  "Disabled" ) \
-        GENERATOR( enabled,     1,  "Enabled" )
-
-    namespace flag { GENERATE_ENUM_STRING_MAP( FOREACH_FLAG_VALUE ); }
-
-    #undef FOREACH_FLAG_VALUE
-
     #define FOREACH_ANALOG_IMPEDANCE_VALUE( GENERATOR ) \
         GENERATOR( high,    0,  "1 kOhm" ) \
         GENERATOR( low,     1,  "50 Ohm" )
-
     namespace analog_impedance { GENERATE_ENUM_STRING_MAP( FOREACH_ANALOG_IMPEDANCE_VALUE ); }
-
     #undef FOREACH_ANALOG_IMPEDANCE_VALUE
+    
+    #define FOREACH_FLAG_VALUE( GENERATOR ) \
+        GENERATOR( disabled,    0,  "Disabled" ) \
+        GENERATOR( enabled,     1,  "Enabled" )
+    namespace flag { GENERATE_ENUM_STRING_MAP( FOREACH_FLAG_VALUE ); }
+    #undef FOREACH_FLAG_VALUE
     
     #define FOREACH_RUN_MODE_VALUE( GENERATOR ) \
         GENERATOR( constant_current, 0,   "Constant Current Mode" ) \
         GENERATOR( constant_power,   1,   "Constant Power Mode" ) \
         GENERATOR( modulation,       2,   "Modulation Mode" )
-
     namespace run_mode { GENERATE_ENUM_STRING_MAP( FOREACH_RUN_MODE_VALUE ); }
-
     #undef FOREACH_RUN_MODE_VALUE
+
+    #define FOREACH_TOGGLE_VALUE( GENERATOR ) \
+        GENERATOR( off, 0,  "Off" ) \
+        GENERATOR( on,  1,  "On" )
+    namespace toggle { GENERATE_ENUM_STRING_MAP( FOREACH_TOGGLE_VALUE ); }
+    #undef FOREACH_TOGGLE_VALUE
 
     //#define FOREACH_PROPERTY( GENERATOR ) \
     //    GENERATOR( model,                       "Model"                     ) \
@@ -118,7 +110,7 @@ public:
 
     LaserDevice* Device();
 
-    Property* Property( const char* name )
+    Property* Property( const std::string& name )
     {
         return properties_[ name ];
     }
