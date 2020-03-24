@@ -66,6 +66,8 @@ const char * g_DeviceVendorName = "COBOLT: a HÜBNER Group Company";
 const char * g_SendTerm = "\r";
 const char * g_RecvTerm = "\r\n";
 
+const char* const g_Property_Port_None = "None";
+
 const char* const g_Property_Unknown_Value = "Unknown";
 
 const char * const g_Default_Str_Empty = "";
@@ -120,8 +122,11 @@ MODULE_API void DeleteDevice( MM::Device* pDevice )
 CoboltOfficial::CoboltOfficial() :
     laser_( NULL ),
     bInitialized_( false ),
+    port_( "None" ),
     bBusy_( false )
 {
+    cobolt::Logger::Instance().SetupWithGateway( this );
+
     // TODO Auto-generated constructor stub
     assert( strlen( g_DeviceName ) < (unsigned int) MM::MaxStrLength );
 
@@ -129,7 +134,7 @@ CoboltOfficial::CoboltOfficial() :
 
     // Map error codes to strings:
     SetErrorText( ERR_PORT_CHANGE_FORBIDDEN,                "You can't change the port after device has been initialized."          );
-    SetErrorText( ERR_UNDEFINED_SERIAL_PORT,                "Serial port must not be undefined when initializing!"                  );
+    SetErrorText( ERR_SERIAL_PORT_NOT_SELECTED,                "Serial port must not be undefined when initializing!"                  );
     SetErrorText( ERR_UNKNOWN_COBOLT_LASER_MODEL,           "Cobolt Laser Model is not yet supported!"                              );
     SetErrorText( OPERATING_SHUTTER_WITH_LASER_OFF,         "Cannot operate shutter while the Laser is turned off!"                 );
     SetErrorText( ERR_LASER_OPERATING_MODE_NOT_SUPPORTED,   "Laser Operating Mode not yet implemented or not supported!"            );
@@ -157,25 +162,21 @@ CoboltOfficial::~CoboltOfficial()
 //
 int CoboltOfficial::SetOpen( bool open )
 {
-    int reply = DEVICE_ERR;
-
-    if ( laserStatus_.compare( g_PropertyOff ) == 0 ) {
-        if ( open == true ) {
-            /* When lasers is turned off, the pause laser output is always inactive.
-             * No command is needed to be sent to laser, just log
-             */
-            LogMessage( "CoboltOfficial::SetOpen: Open shutter requested, while laser is OFF. Ignore request.", true );
-        } else {
-            /* Close shutter, i.e. turn on laser pause, is not possible when laser is turned off. Log */
-            LogMessage( "CoboltOfficial::SetOpen: Close shutter requested, while laser is OFF. Nothing done.", true );
-        }
-        reply = OPERATING_SHUTTER_WITH_LASER_OFF;
+    if ( laser_->toggle->Fetch() != laser::toggle::on ) {
+        return OPERATING_SHUTTER_WITH_LASER_OFF;
+    }
+    
+    if ( open ) {
+        laser_->paused->Set( false ); // laser_->UnpauseShining()
     } else {
-        HandleShutter( open );
-        reply = DEVICE_OK;
+        laser_->paused->Set( true ); // laser_->PauseShining()
     }
 
-    return reply;
+    if ( !laser_->paused->LastRequestSuccessful() ) {
+        return DEVICE_ERR;
+    }
+    
+    return DEVICE_OK;
 }
 
 /**
@@ -183,13 +184,7 @@ int CoboltOfficial::SetOpen( bool open )
  */
 int CoboltOfficial::GetOpen( bool& open )
 {
-    /*
-     * TODO: Laser Pause Command is only supported by new products.
-     *       Need to implement functionality for older products.
-     */
-
-     /* If Laser is off or if laser on and paused, the shutter is considered closed. */
-    open = ( ( laserStatus_.compare( g_PropertyOff ) == 0 ) ? false : ( !bLaserIsPaused_ ) );
+    open = ( laser_->toggle->Fetch() == laser::toggle::on && !laser_->paused->Fetch() );
 
     return DEVICE_OK;
 }
@@ -211,248 +206,233 @@ int CoboltOfficial::Fire( double deltaT )
     return reply;
 }
 
-int CoboltOfficial::Initialize()
+int CoboltOfficial::ExposeToGui( const Property* property )
+{
+    CPropertyAction* action = new CPropertyAction( this, &CoboltOfficial::OnLaserPropertyAction );
+    return CreateProperty( property->Name(), property->FetchAsString().c_str(), property->TypeInGui(), !property->MutableInGui(), action );
+}
+
+int CoboltOfficial::Initialize() // TODO NOW: implement this then make laser model adaptation work
 {
     if ( bInitialized_ ) {
         return DEVICE_OK;
     }
-    /* Make sure a serial port is set! */
-    else if ( strcmp( port_.c_str(), g_Default_Str_Unknown ) != 0 ) {
-        CPropertyAction* pAct;
-        int nRet;
-        std::vector<std::string> allowedValues;
 
-        /* Verify communication and in the same time set all lasers off (safe mode) */
-        {
-            std::string answer;
-            nRet = SendSerialCmd( "l0", answer ); /* Send all lasers off */
-            if ( nRet != DEVICE_OK ) {
-                /* Communication failed or not supported command (possibly not a Cobolt laser) */
-                if ( nRet == DEVICE_UNSUPPORTED_COMMAND ) {
-                    LogMessage( "CoboltOfficial::Initialize: Laser status off cmd not supported, i.e. not a Cobolt laser!" );
-                } else {
-                    LogMessage( "CoboltOfficial::Initialize: Failed to communicate with Laser." );
-                }
-
-                return nRet;
-            }
-            /* Possible Laser Pause is cancelled when lasers turned off */
-            bLaserIsPaused_ = false;
-        }
-
-        /* Fetch Laser model, maxpower, wavelength .. */
-        nRet = HandleGLMCmd();
-        if ( DEVICE_OK != nRet ) {
-            LogMessage( "CoboltOfficial::Initialize: Failed to extract laser info! ErrorCode: " + std::to_string( (_Longlong) nRet ), true );
-            return nRet;
-        }
-
-        /* Check the Pause Laser Command is supported */
-        nRet = CheckIfPauseCmdIsSupported();
-        if ( DEVICE_OK != nRet ) {
-            LogMessage( "CoboltOfficial::Initialize: Failed to check if Laser Pause Command is supported! ErrorCode: " + std::to_string( (_Longlong) nRet ), true );
-            return nRet;
-        }
-
-        /* LASERMODEL */
-        pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_Model );
-        nRet = CreateProperty( g_PropertyLaserModel, laserModel_.c_str(), MM::String, true, pAct );
-        if ( DEVICE_OK != nRet ) {
-            return nRet;
-        }
-
-        /* SERIAL NUMBER */
-        serialNumber_ = GetSerialNumber();
-        pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_SerialNumber );
-        nRet = CreateProperty( g_PropertySerialNumber, serialNumber_.c_str(), MM::String, true, pAct );
-        if ( DEVICE_OK != nRet ) {
-            return nRet;
-        }
-
-        /* FIRMWARE VERSION */
-        firmwareVersion_ = GetFirmwareVersion();
-        pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_FirmwareVersion );
-        nRet = CreateProperty( g_PropertyFirmwareVersion, firmwareVersion_.c_str(), MM::String, true, pAct );
-        if ( DEVICE_OK != nRet ) {
-            return nRet;
-        }
-
-        /* OPERATING HOURS */
-        operatingHours_ = GetOperatingHours();
-        pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_OperatingHours );
-        nRet = CreateProperty( g_PropertyOperatingHours, operatingHours_.c_str(), MM::String, true, pAct );
-        if ( DEVICE_OK != nRet ) {
-            return nRet;
-        }
-
-        /*** TODO: This might be the place to branch the init for single and multi laser models. From this point the properties are laser specific
-         *** and not common for the connected laser models.
-         ***/
-
-         /* LASER WAVELENGTH */
-        pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_Wavelength );
-        nRet = CreateProperty( g_PropertyWaveLength, std::to_string( (long long) laserWavelength_ ).c_str(), MM::Integer, true, pAct );
-        if ( DEVICE_OK != nRet ) {
-            return nRet;
-        }
-
-        /* LASER MAX POWER [mW] */
-        pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_MaxPowerSetpoint );
-        nRet = CreateProperty( g_PropertyMaxPower, std::to_string( (long double) ( laserMaxPower_ * 1000.0 ) ).c_str(), MM::Float, true, pAct );
-        if ( DEVICE_OK != nRet ) {
-            return nRet;
-        }
-
-        /* LASER MAX CURRENT [mA] */
-        laserMaxCurrent_ = GetLaserMaxCurrent();
-        pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_MaxCurrentSetpoint );
-        nRet = CreateProperty( g_PropertyMaxCurrent, std::to_string( (long double) laserMaxCurrent_ ).c_str(), MM::Float, true, pAct );
-        if ( DEVICE_OK != nRet ) {
-            return nRet;
-        }
-
-        /* LASER POWER SETTING [mW] (Initialise to safe state, i.e. 0.0) */
-        laserPowerSetting_ = 0.0;
-        nRet = SetLaserPowerSetting( laserPowerSetting_ );
-        if ( nRet != DEVICE_OK ) {
-            /* Failed to update laser with laserpowersetting */
-            return nRet;
-        }
-        pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_PowerSetpoint );
-        nRet = CreateProperty( g_PropertyLaserPowerSetting, g_Default_Str_Double_0, MM::Float, false, pAct );
-        if ( DEVICE_OK != nRet ) {
-            return nRet;
-        }
-        /* Create limits 0.0 ... Laser Max Power Setting */
-        SetPropertyLimits( g_PropertyLaserPowerSetting, 0.0, ( laserMaxPower_ * 1000.0 ) );
-
-        /* LASER CURRENT SETTING [mA] (Initialise to safe state, i.e. 0.0) */
-        laserCurrentSetting_ = 0.0;
-        nRet = SetLaserDriveCurrent( laserCurrentSetting_ );
-        if ( nRet != DEVICE_OK ) {
-            /* Failed to update laser with laserdrivecurrent */
-            return nRet;
-        }
-        pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_CurrentSetpoint );
-        nRet = CreateProperty( g_PropertyLaserCurrentSetting, g_Default_Str_Double_0, MM::Float, false, pAct );
-        if ( DEVICE_OK != nRet ) {
-            return nRet;
-        }
-        /* Create limits 0.0 ... Laser Max Current Setting */
-        SetPropertyLimits( g_PropertyLaserCurrentSetting, 0.0, laserMaxCurrent_ );
-
-
-        /* LASER STATUS */
-        laserStatus_ = GetLaserStatus();
-        if ( laserStatus_.compare( g_PropertyOff ) != 0 ) {
-            /* We started the initialize with turning the lasers off */
-            LogMessage( "CoboltOfficial::Initialize(): Laser is not turned off as expected! Got: " + laserStatus_, true );
-            return DEVICE_ERR;
-        }
-        pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_LaserToggle );
-        nRet = CreateProperty( g_PropertyLaserStatus, laserStatus_.c_str(), MM::String, false, pAct );
-        if ( DEVICE_OK != nRet ) {
-            return nRet;
-        }
-        /* Create allowed values On/Off */
-        allowedValues.clear();
-        allowedValues.push_back( g_PropertyOn );
-        allowedValues.push_back( g_PropertyOff );
-        SetAllowedValues( g_PropertyLaserStatus, allowedValues );
-
-        /* LASER OPERATING MODE  (Initialise to Constant Power)*/
-        nRet = SetLaserOperatingMode( CONSTANT_POWER_MODE );
-        if ( DEVICE_OK != nRet ) {
-            return nRet;
-        }
-        /* Note that as long LaserStatus is Off, the mode returned from laser is OFF */
-        laserOperatingMode_ = LASER_OFF_MODE;
-        pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_RunMode );
-        nRet = CreateProperty( g_PropertyOperatingMode, laserOperatingMode_.c_str(), MM::String, false, pAct );
-        if ( DEVICE_OK != nRet ) {
-            return nRet;
-        }
-        /* Create allowed values */
-        allowedValues.clear();
-        allowedValues.push_back( CONSTANT_POWER_MODE );
-        allowedValues.push_back( CONSTANT_CURRENT_MODE );
-        allowedValues.push_back( MODULATION_MODE );
-        allowedValues.push_back( LASER_OFF_MODE );
-        SetAllowedValues( g_PropertyOperatingMode, allowedValues );
-
-        /* LASER OUTPUT */
-        laserPowerOutput_ = GetLaserPowerOutput();
-        std::string tmpString = std::to_string( (long double) laserPowerOutput_ ) + " mW";
-        pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_PowerReading );
-        nRet = CreateProperty( g_PropertyCurrentLaserOutput, tmpString.c_str(), MM::String, true, pAct );
-        if ( DEVICE_OK != nRet ) {
-            return nRet;
-        }
-
-        /* MODULATION LASER POWER [mW]  (Initialise to safe state, i.e. 0.0) */
-        /* TODO: If set modulation laser power command is not supported, skip the property */
-        modulationPowerSetting_ = 0.0;
-        nRet = SetModulationPowerSetting( modulationPowerSetting_ );
-        if ( DEVICE_OK == nRet ) {
-            pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_ModulationPowerSetpoint );
-            nRet = CreateProperty( g_PropertyModulationPower, std::to_string( (long double) modulationPowerSetting_ ).c_str(), MM::Float, false, pAct );
-            if ( DEVICE_OK != nRet ) {
-                return nRet;
-            }
-            /* TODO: Is it correct to use laser max power as max laser modulation power? */
-            /* Create limits 0.0 ... Laser Max Power */
-            SetPropertyLimits( g_PropertyModulationPower, 0.0, ( laserMaxPower_ * 1000.0 ) );
-        }
-
-        /* DIGITAL MODULATION STATE (Enabled/Disabled) */
-        digitalModulationState_ = GetDigitalModulationState();
-        pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_DigitalModulationFlag );
-        nRet = CreateProperty( g_PropertyDigitalModulationState, digitalModulationState_.c_str(), MM::String, false, pAct );
-        if ( DEVICE_OK != nRet ) {
-            return nRet;
-        }
-        /* Create allowed values */
-        allowedValues.clear();
-        allowedValues.push_back( g_PropertyEnabled );
-        allowedValues.push_back( g_PropertyDisabled );
-        SetAllowedValues( g_PropertyDigitalModulationState, allowedValues );
-
-        /* ANALOG MODULATION STATE (Enabled/Disabled) */
-        analogModulationState_ = GetAnalogModulationState();
-        pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_AnalogModulationFlag );
-        nRet = CreateProperty( g_PropertyAnalogModulationState, analogModulationState_.c_str(), MM::String, false, pAct );
-        if ( DEVICE_OK != nRet ) {
-            return nRet;
-        }
-        /* Create allowed values */
-        allowedValues.clear();
-        allowedValues.push_back( g_PropertyEnabled );
-        allowedValues.push_back( g_PropertyDisabled );
-        SetAllowedValues( g_PropertyAnalogModulationState, allowedValues );
-
-        /* ANALOG IMPEDANCE STATE (50 Ohm/1 kOhm) */
-        analogImpedanceState_ = GetAnalogImpedanceState();
-        pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_AnalogImpedance );
-        nRet = CreateProperty( g_PropertyAnalogImpedanceState, analogImpedanceState_.c_str(), MM::String, false, pAct );
-        if ( DEVICE_OK != nRet ) {
-            return nRet;
-        }
-        /* Create allowed values */
-        allowedValues.clear();
-        allowedValues.push_back( g_PropertyLowImp );
-        allowedValues.push_back( g_PropertyHighImp );
-        SetAllowedValues( g_PropertyAnalogImpedanceState, allowedValues );
-
-        /* Laser is completely initialised */
-        bInitialized_ = true;
-
-        return DEVICE_OK;
-
-    } else {
-        /* Serial port is still undefined. Cannot initialize */
-        LogMessage( "CoboltOfficial::Initialize: Serial Port not defined!", true );
-        return ERR_UNDEFINED_SERIAL_PORT;
+    if ( port_ == g_Property_Port_None ) {
+        
+        LogMessage( "CoboltOfficial::Initialize(): Serial port not selected", true );
+        return ERR_SERIAL_PORT_NOT_SELECTED;
     }
+
+    laser_->SetupWithLaserDevice( this );
+
+    int result;
+
+    Laser::PropertyIterator it = laser_->PropertyIteratorBegin();
+    while ( it != laser_->PropertyIteratorEnd() ) {
+        ExposeToGui( it->second );
+
+    }
+    
+    result = ExposeToGuiIfSupported( laser_->model );           if ( result != DEVICE_OK ) { return result; }
+    result = ExposeToGuiIfSupported( laser_->serialNumber );    if ( result != DEVICE_OK ) { return result; }
+    result = ExposeToGuiIfSupported( laser_->firmwareVersion ); if ( result != DEVICE_OK ) { return result; }
+
+    /* LASERMODEL */
+    pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_Model );
+    result = CreateProperty( laser_->model->Name(), laser_->model->Fetch().c_str(), MM::String, true, pAct );
+    if ( result != DEVICE_OK ) {
+        return result;
+    }
+
+    // TODO NOW: Continue here
+
+    /* SERIAL NUMBER */
+    serialNumber_ = GetSerialNumber();
+    pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_SerialNumber );
+    result = CreateProperty( g_PropertySerialNumber, serialNumber_.c_str(), MM::String, true, pAct );
+    if ( DEVICE_OK != result ) {
+        return result;
+    }
+
+    /* FIRMWARE VERSION */
+    firmwareVersion_ = GetFirmwareVersion();
+    pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_FirmwareVersion );
+    result = CreateProperty( g_PropertyFirmwareVersion, firmwareVersion_.c_str(), MM::String, true, pAct );
+    if ( DEVICE_OK != result ) {
+        return result;
+    }
+
+    /* OPERATING HOURS */
+    operatingHours_ = GetOperatingHours();
+    pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_OperatingHours );
+    result = CreateProperty( g_PropertyOperatingHours, operatingHours_.c_str(), MM::String, true, pAct );
+    if ( DEVICE_OK != result ) {
+        return result;
+    }
+
+    /*** TODO: This might be the place to branch the init for single and multi laser models. From this point the properties are laser specific
+        *** and not common for the connected laser models.
+        ***/
+
+        /* LASER WAVELENGTH */
+    pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_Wavelength );
+    result = CreateProperty( g_PropertyWaveLength, std::to_string( (long long) laserWavelength_ ).c_str(), MM::Integer, true, pAct );
+    if ( DEVICE_OK != result ) {
+        return result;
+    }
+
+    /* LASER MAX POWER [mW] */
+    pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_MaxPowerSetpoint );
+    result = CreateProperty( g_PropertyMaxPower, std::to_string( (long double) ( laserMaxPower_ * 1000.0 ) ).c_str(), MM::Float, true, pAct );
+    if ( DEVICE_OK != result ) {
+        return result;
+    }
+
+    /* LASER MAX CURRENT [mA] */
+    laserMaxCurrent_ = GetLaserMaxCurrent();
+    pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_MaxCurrentSetpoint );
+    result = CreateProperty( g_PropertyMaxCurrent, std::to_string( (long double) laserMaxCurrent_ ).c_str(), MM::Float, true, pAct );
+    if ( DEVICE_OK != result ) {
+        return result;
+    }
+
+    /* LASER POWER SETTING [mW] (Initialise to safe state, i.e. 0.0) */
+    laserPowerSetting_ = 0.0;
+    result = SetLaserPowerSetting( laserPowerSetting_ );
+    if ( result != DEVICE_OK ) {
+        /* Failed to update laser with laserpowersetting */
+        return result;
+    }
+    pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_PowerSetpoint );
+    result = CreateProperty( g_PropertyLaserPowerSetting, g_Default_Str_Double_0, MM::Float, false, pAct );
+    if ( DEVICE_OK != result ) {
+        return result;
+    }
+    /* Create limits 0.0 ... Laser Max Power Setting */
+    SetPropertyLimits( g_PropertyLaserPowerSetting, 0.0, ( laserMaxPower_ * 1000.0 ) );
+
+    /* LASER CURRENT SETTING [mA] (Initialise to safe state, i.e. 0.0) */
+    laserCurrentSetting_ = 0.0;
+    result = SetLaserDriveCurrent( laserCurrentSetting_ );
+    if ( result != DEVICE_OK ) {
+        /* Failed to update laser with laserdrivecurrent */
+        return result;
+    }
+    pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_CurrentSetpoint );
+    result = CreateProperty( g_PropertyLaserCurrentSetting, g_Default_Str_Double_0, MM::Float, false, pAct );
+    if ( DEVICE_OK != result ) {
+        return result;
+    }
+    /* Create limits 0.0 ... Laser Max Current Setting */
+    SetPropertyLimits( g_PropertyLaserCurrentSetting, 0.0, laserMaxCurrent_ );
+
+
+    /* LASER STATUS */
+    laserStatus_ = GetLaserStatus();
+    if ( laserStatus_.compare( g_PropertyOff ) != 0 ) {
+        /* We started the initialize with turning the lasers off */
+        LogMessage( "CoboltOfficial::Initialize(): Laser is not turned off as expected! Got: " + laserStatus_, true );
+        return DEVICE_ERR;
+    }
+    pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_LaserToggle );
+    result = CreateProperty( g_PropertyLaserStatus, laserStatus_.c_str(), MM::String, false, pAct );
+    if ( DEVICE_OK != result ) {
+        return result;
+    }
+    /* Create allowed values On/Off */
+    allowedValues.clear();
+    allowedValues.push_back( g_PropertyOn );
+    allowedValues.push_back( g_PropertyOff );
+    SetAllowedValues( g_PropertyLaserStatus, allowedValues );
+
+    /* LASER OPERATING MODE  (Initialise to Constant Power)*/
+    result = SetLaserOperatingMode( CONSTANT_POWER_MODE );
+    if ( DEVICE_OK != result ) {
+        return result;
+    }
+    /* Note that as long LaserStatus is Off, the mode returned from laser is OFF */
+    laserOperatingMode_ = LASER_OFF_MODE;
+    pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_RunMode );
+    result = CreateProperty( g_PropertyOperatingMode, laserOperatingMode_.c_str(), MM::String, false, pAct );
+    if ( DEVICE_OK != result ) {
+        return result;
+    }
+    /* Create allowed values */
+    allowedValues.clear();
+    allowedValues.push_back( CONSTANT_POWER_MODE );
+    allowedValues.push_back( CONSTANT_CURRENT_MODE );
+    allowedValues.push_back( MODULATION_MODE );
+    allowedValues.push_back( LASER_OFF_MODE );
+    SetAllowedValues( g_PropertyOperatingMode, allowedValues );
+
+    /* LASER OUTPUT */
+    laserPowerOutput_ = GetLaserPowerOutput();
+    std::string tmpString = std::to_string( (long double) laserPowerOutput_ ) + " mW";
+    pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_PowerReading );
+    result = CreateProperty( g_PropertyCurrentLaserOutput, tmpString.c_str(), MM::String, true, pAct );
+    if ( DEVICE_OK != result ) {
+        return result;
+    }
+
+    /* MODULATION LASER POWER [mW]  (Initialise to safe state, i.e. 0.0) */
+    /* TODO: If set modulation laser power command is not supported, skip the property */
+    modulationPowerSetting_ = 0.0;
+    result = SetModulationPowerSetting( modulationPowerSetting_ );
+    if ( DEVICE_OK == result ) {
+        pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_ModulationPowerSetpoint );
+        result = CreateProperty( g_PropertyModulationPower, std::to_string( (long double) modulationPowerSetting_ ).c_str(), MM::Float, false, pAct );
+        if ( DEVICE_OK != result ) {
+            return result;
+        }
+        /* TODO: Is it correct to use laser max power as max laser modulation power? */
+        /* Create limits 0.0 ... Laser Max Power */
+        SetPropertyLimits( g_PropertyModulationPower, 0.0, ( laserMaxPower_ * 1000.0 ) );
+    }
+
+    /* DIGITAL MODULATION STATE (Enabled/Disabled) */
+    digitalModulationState_ = GetDigitalModulationState();
+    pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_DigitalModulationFlag );
+    result = CreateProperty( g_PropertyDigitalModulationState, digitalModulationState_.c_str(), MM::String, false, pAct );
+    if ( DEVICE_OK != result ) {
+        return result;
+    }
+    /* Create allowed values */
+    allowedValues.clear();
+    allowedValues.push_back( g_PropertyEnabled );
+    allowedValues.push_back( g_PropertyDisabled );
+    SetAllowedValues( g_PropertyDigitalModulationState, allowedValues );
+
+    /* ANALOG MODULATION STATE (Enabled/Disabled) */
+    analogModulationState_ = GetAnalogModulationState();
+    pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_AnalogModulationFlag );
+    result = CreateProperty( g_PropertyAnalogModulationState, analogModulationState_.c_str(), MM::String, false, pAct );
+    if ( DEVICE_OK != result ) {
+        return result;
+    }
+    /* Create allowed values */
+    allowedValues.clear();
+    allowedValues.push_back( g_PropertyEnabled );
+    allowedValues.push_back( g_PropertyDisabled );
+    SetAllowedValues( g_PropertyAnalogModulationState, allowedValues );
+
+    /* ANALOG IMPEDANCE STATE (50 Ohm/1 kOhm) */
+    analogImpedanceState_ = GetAnalogImpedanceState();
+    pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_AnalogImpedance );
+    result = CreateProperty( g_PropertyAnalogImpedanceState, analogImpedanceState_.c_str(), MM::String, false, pAct );
+    if ( DEVICE_OK != result ) {
+        return result;
+    }
+    /* Create allowed values */
+    allowedValues.clear();
+    allowedValues.push_back( g_PropertyLowImp );
+    allowedValues.push_back( g_PropertyHighImp );
+    SetAllowedValues( g_PropertyAnalogImpedanceState, allowedValues );
+
+    /* Laser is completely initialised */
+    bInitialized_ = true;
+
+    return DEVICE_OK;
 }
 
 int CoboltOfficial::Shutdown()
@@ -466,19 +446,25 @@ int CoboltOfficial::Shutdown()
     return DEVICE_OK;
 }
 
-void CoboltOfficial::GetName( char* name ) const
-{
-    CDeviceUtils::CopyLimitedString( name, g_DeviceName );
-}
-
 bool CoboltOfficial::Busy()
 {
     return bBusy_;
 }
 
+void CoboltOfficial::GetName( char* name ) const
+{
+    CDeviceUtils::CopyLimitedString( name, g_DeviceName );
+}
+
 //////////////////////////////////////////////////////////////////////////////
 // Action interface
 //
+
+int CoboltOfficial::OnLaserPropertyAction( MM::PropertyBase* guiProperty, MM::ActionType action )
+{
+    laser_->Property( guiProperty->GetName() )->OnGuiAction( guiProperty, action );
+}
+
 int CoboltOfficial::OnPropertyAction_Port( MM::PropertyBase* guiProperty, MM::ActionType action )
 {
     if ( action == MM::BeforeGet ) {
@@ -904,20 +890,4 @@ int CoboltOfficial::HandleGLMCmd() // TODO: move parts of the implementation to 
     }
 
     return reply;
-}
-
-/******************************************************************************
- * Description:
- *  If Close Shutter:
- *           Pause Cmd supported: Send Laser Pause Command "enable pause"
- *           Else store all important settings and modes before going to Constant Current
- *           and set output current to 0.0 mA - // TODO: implement on request
- *  If Open Shutter:
- *           Pause Cmd supported: Send Laser Pause Command "disable pause"
- *           Else use the stored settings and modes to return from "closed shutter" - // TODO: implement on request
- */
-void CoboltOfficial::HandleShutter( bool openShutter )
-{
-    const bool closeShutter = !openShutter;
-    laser_->paused->Set( closeShutter );
 }

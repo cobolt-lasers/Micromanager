@@ -21,18 +21,21 @@
 #define ENUM_VALUE_GENERATOR( e ) e,
 #define ENUM_VALUE_GENERATOR2( e, _ ) e,
 #define ENUM_VALUE_PAIR_GENERATOR( e, v ) e = v,
+#define ENUM_VALUE_PAIR_GENERATOR3( e, v, _ ) e = v,
 
-#define STRING_VALUE_GENERATOR( s ) core::util::String( #s ),
-#define STRING_VALUE_GENERATOR2( _, s ) core::util::String( #s ),
-#define STRING_VALUE_GENERATOR1( s, _ ) core::util::String( #s ),
+#define STRING_VALUE_GENERATOR( s ) std::string( #s ),
+#define STRING_VALUE_GENERATOR2( _, s ) std::string( #s ),
+#define STRING_VALUE_GENERATOR1( s, _ ) std::string( #s ),
 #define CSTRING_VALUE_GENERATOR( s ) STRINGIFY( s ),
 #define CSTRING_VALUE_GENERATOR2( _, s ) STRINGIFY( s ),
-#define QUOTED_CSTRING_VALUE_GENERATOR( _, s ) s,
+#define QUOTED_CSTRING_VALUE_GENERATOR( _1, _2, s ) s,
 
-#define GENERATE_ENUM_STRING( FOREACH )                                                                                                                     \
-    enum type { FOREACH( ENUM_VALUE_GENERATOR2 ) __count__, __undefined__ };                                                                                \
+#define GENERATE_ENUM_STRING_MAP( FOREACH )                                                                                                                     \
+    enum type { FOREACH( ENUM_VALUE_PAIR_GENERATOR3 ) __count__, __undefined__ };                                                                                \
     static const char* string[] = { FOREACH( QUOTED_CSTRING_VALUE_GENERATOR ) "", "" };                                                                     \
     type FromString( const std::string& s ) { for ( int i = 0; i < __count__; i++ ) if ( s == string[ i ] ) return (type) i; return type::__undefined__; }  \
     const char* ToString( type t ) { if ( t < __count__ && t >= 0 ) return string[ (int) t ]; return ""; }
+
+#include "Logger.h"
 
 #endif // #ifndef __COBOLT_H

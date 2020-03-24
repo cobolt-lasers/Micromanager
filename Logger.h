@@ -9,14 +9,46 @@
 #ifndef __COBOLT__LOGGER
 #define __COBOLT__LOGGER
 
-#include <string>
+NAMESPACE_COBOLT_BEGIN
 
-namespace cobolt
+class Logger
 {
-    class Logger
+public:
+
+    class Gateway
     {
-        virtual int LogMessage( const char* msg, bool debugOnly ) const = 0;
+    public:
+
+        virtual void SendLogMessage( const char* message, bool debug ) const = 0;
     };
-}
+
+    static Logger& Instance()
+    {
+        static Logger instance;
+        return instance;
+    }
+
+    void SetupWithGateway( const Gateway* gateway )
+    {
+        gateway_ = gateway;
+    }
+
+    virtual void Log( const std::string& message, bool debug ) const
+    {
+        if ( gateway_ == NULL ) {
+            return;
+        }
+        
+        gateway_->SendLogMessage( message.c_str(), debug );
+    }
+
+private:
+
+    Logger();
+
+    const Gateway* gateway_;
+};
+
+NAMESPACE_COBOLT_END
 
 #endif // #ifndef __COBOLT__LOGGER

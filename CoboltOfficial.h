@@ -27,18 +27,20 @@ using namespace std;
 // Error codes
 //
 #define ERR_PORT_CHANGE_FORBIDDEN                101001
-#define ERR_UNDEFINED_SERIAL_PORT                101002
+#define ERR_SERIAL_PORT_NOT_SELECTED                101002
 #define ERR_UNKNOWN_COBOLT_LASER_MODEL           101003
 #define OPERATING_SHUTTER_WITH_LASER_OFF         101004
 #define ERR_LASER_OPERATING_MODE_NOT_SUPPORTED   101005
 #define ERR_CANNOT_SET_MODE_OFF                  101006
 
-class CoboltOfficial : public CShutterBase<CoboltOfficial>, public cobolt::LaserDevice
+class CoboltOfficial : public CShutterBase<CoboltOfficial>, public cobolt::LaserDevice, public cobolt::Logger::Gateway
 {
 public:
 
     CoboltOfficial();
     virtual ~CoboltOfficial();
+
+    int ExposeToGui( const Property* property );
 
     //////////////////////////////////////////////////////////////////////////////
     // MMDevice API
@@ -63,6 +65,8 @@ public:
     //////////////////////////////////////////////////////////////////////////////
     // Property Action Handlers
     //
+    int OnLaserPropertyAction( MM::PropertyBase*, MM::ActionType );
+
     int OnPropertyAction_Port                       ( MM::PropertyBase*, MM::ActionType );
     int OnPropertyAction_Model                      ( MM::PropertyBase*, MM::ActionType );
     int OnPropertyAction_SerialNumber               ( MM::PropertyBase*, MM::ActionType );
@@ -87,11 +91,11 @@ private:
     int CheckIfPauseCmdIsSupported();
     void ExtractGlmReplyParts( std::string answer, std::vector<std::string> &svec );
     int HandleGLMCmd();
-    void HandleShutter( bool openShutter );
-
+    
     cobolt::Laser* laser_;
 
     bool bInitialized_;
+    std::string port_;
     bool bBusy_;
 };
 
