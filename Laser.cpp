@@ -13,88 +13,223 @@ using namespace std;
 using namespace cobolt;
 using namespace laser;
 
-Laser::Laser()
-{}
+Laser* Laser::Create( const std::string& modelString )
+{
+    std::vector<std::string> modelTokens;
+    DecomposeModelString( modelString, modelTokens );
+    Laser* laser;
+    
+    if ( modelString.find( "-06-" ) != std::string::npos ) {
+
+        laser = new Laser_06DPL();
+
+    } else {
+
+        laser = new Laser_Unknown();
+    }
+
+    laser->wavelength_ = modelTokens[ 0 ];
+
+    return laser;
+}
 
 Laser::~Laser()
 {
-    ClearProperties();
+    for ( PropertyIterator it = GetPropertyIteratorBegin(); it != GetPropertyIteratorEnd(); it++ ) {
+        delete it->second;
+    }
+
+    properties_.clear();
+}
+
+const std::string& Laser::Wavelength() const
+{
+    return wavelength_;
 }
 
 void Laser::SetupWithLaserDevice( LaserDevice* device )
 {
     assert( device != NULL );
-    device_ = device;
+    assert( device_ == NULL ); // Adapt must not be ran more than once.
 
-    Adapt();
+    device_ = device;
+    
+    Incarnate();
 }
 
-LaserDevice* Laser::Device()
+LaserDevice* Laser::GetDevice()
 {
     return device_;
 }
 
-void Laser::ClearProperties()
+void Laser::SetOn( const bool on )
 {
-    PropertyIterator it = PropertyIteratorBegin();
-    while ( it != PropertyIteratorEnd() ) {
-        delete it->second;
-    }
-    
-    properties_.clear();
+    MutableProperty* p = dynamic_cast<MutableProperty*>( GetProperty( property::toggle ) );
+    p->Set( toggle::ToString( ( on ? toggle::on : toggle::off )  ) );
 }
 
-void Laser::Adapt()
+void Laser::SetPaused( const bool paused )
 {
-    // OLD CODE BEGIN (from CoboltOfficial::Initialize()) -->
-    //std::string answer;
-    //nRet = SendSerialCmd( "l0", answer ); /* Send all lasers off */
-    //if ( nRet != DEVICE_OK ) {
-    //    /* Communication failed or not supported command (possibly not a Cobolt laser) */
-    //    if ( nRet == DEVICE_UNSUPPORTED_COMMAND ) {
-    //        LogMessage( "CoboltOfficial::Initialize: Laser status off cmd not supported, i.e. not a Cobolt laser!" );
-    //    } else {
-    //        LogMessage( "CoboltOfficial::Initialize: Failed to communicate with Laser." );
-    //    }
+    MutableProperty* p = dynamic_cast<MutableProperty*>( GetProperty( property::paused ) );
+    p->Set( toggle::ToString( ( paused ? toggle::on : toggle::off ) ) ); 
+}
 
-    //    return nRet;
-    //}
-    ///* Possible Laser Pause is cancelled when lasers turned off */
-    //bLaserIsPaused_ = false;
-    // <-- OLD CODE END
+bool Laser::IsOn() const
+{
+    return ( toggle::FromString( GetProperty( property::toggle )->Get<std::string>() ) == toggle::on );
+}
 
-    if ( device_ == NULL ) {
+bool Laser::IsPaused() const
+{
+    return ( toggle::FromString( GetProperty( property::paused )->Get<std::string>() ) == toggle::on );
+}
+
+Property* Laser::GetProperty( const std::string& name ) const
+{
+    return properties_[ name ];
+}
+
+Property* Laser::GetProperty( const std::string& name )
+{
+    return properties_[ name ];
+}
+
+Property* Laser::GetProperty( const laser::property::symbol propertySymbol ) const
+{
+    return properties_[ laser::property::ToString( propertySymbol ) ];
+}
+
+Property* Laser::GetProperty( const laser::property::symbol propertySymbol )
+{
+    return properties_[ laser::property::ToString( propertySymbol ) ];
+}
+
+Laser::PropertyIterator Laser::GetPropertyIteratorBegin()
+{
+    return properties_.begin();
+}
+
+Laser::PropertyIterator Laser::GetPropertyIteratorEnd()
+{
+    return properties_.begin();
+}
+
+/**
+ * \brief Extracts the string parts from the glm? command and put them one by one in a vector.
+ *        expects a string where the parts are separated with the character '-'
+ *
+ * \example The model string could have a format similar to 'WWWW-06-XX-PPPP-CCC'.
+ */
+void Laser::DecomposeModelString( std::string modelString, std::vector<std::string>& modelTokens )
+{
+    std::string token;
+
+    for ( std::string::iterator its = modelString.begin(); its < modelString.end(); its++ ) {
+
+        if ( *its != '-' ) {
+
+            token.push_back( *its );
+
+        } else if ( *its == '\r' ) {
+
+            modelTokens.push_back( token );
+            break;
+
+        } else {
+
+            modelTokens.push_back( token );
+            token.clear();
+        }
+    }
+}
+
+Laser::Laser( const std::string& modelName ) :
+    modelName_( modelName ),
+    wavelength_( "Unknown" )
+{}
+
+bool Laser::SupportsProperty( const property::symbol symbol ) const
+{
+    switch ( symbol ) {
+
+        case property::model:
+        case property::wavelength:
+        case property::serial_number:
+        case property::firmware_version:
+        case property::operating_hours:
+        case property::toggle:
+        case property::paused:
+
+            return true;
+
+        default:
+
+            return SupportsModelSpecificProperty( symbol );
+    }
+}
+
+void Laser::Incarnate()
+{
+    using namespace property;
+    
+    // ###
+    // Create supported properties:
+    
+    CreatePropertyIfSupported( model,                       new BasicProperty<std::string>( symbol_strings[ model ], device_, "glm?" ) );
+    CreatePropertyIfSupported( wavelength,                  new StaticStringProperty( symbol_strings[ wavelength ], this->Wavelength ) );
+    CreatePropertyIfSupported( serial_number,               new BasicProperty<std::string>( symbol_strings[ serial_number ], device_, "gsn?" ) );
+    CreatePropertyIfSupported( firmware_version,            new BasicProperty<std::string>( symbol_strings[ firmware_version ], device_, "gfv?" ) );
+    CreatePropertyIfSupported( operating_hours,             new BasicProperty<std::string>( symbol_strings[ operating_hours ], device_, "hrs?" ) );
+
+    CreatePropertyIfSupported( current_setpoint,            new BasicMutableProperty<double>( symbol_strings[ current_setpoint ], device_, "glc?", "slc" ) );
+    CreatePropertyIfSupported( max_current_setpoint,        new BasicProperty<double>( symbol_strings[ max_current_setpoint ], device_, "gmlc?" ) );
+    CreatePropertyIfSupported( current_reading,             new BasicProperty<double>( symbol_strings[ current_reading ], device_, "i?" ) );
+    CreatePropertyIfSupported( power_setpoint,              new BasicMutableProperty<double>( symbol_strings[ power_setpoint ], device_, "p?", "slp" ) );
+    CreatePropertyIfSupported( max_power_setpoint,          new BasicProperty<double>( symbol_strings[ max_power_setpoint ], device_, "gmlp?" ) );
+
+    CreatePropertyIfSupported( power_reading,               new BasicProperty<double>( symbol_strings[ power_reading ], device_, "pa?" ) );
+    CreatePropertyIfSupported( toggle,                      new ToggleProperty( symbol_strings[ toggle ], device_, "l?", "l1", "l0" ) );
+    CreatePropertyIfSupported( paused,                      new LaserPausedProperty( symbol_strings[ paused ], device_ ) );
+    CreatePropertyIfSupported( run_mode_cc_cp_mod,          new BasicMutableProperty<run_mode::cc_cp_mod::symbol>( symbol_strings[ run_mode_cc_cp_mod ], device_, "gam?", "sam" ) );
+    CreatePropertyIfSupported( digital_modulation_flag,     new BasicMutableProperty<flag::symbol>( symbol_strings[ digital_modulation_flag ], device_, "gdmes?", "sdmes" ) );
+
+    CreatePropertyIfSupported( analog_modulation_flag,      new BasicMutableProperty<flag::symbol>( symbol_strings[ analog_modulation_flag ], device_, "games?", "sames" ) );
+    CreatePropertyIfSupported( modulation_power_setpoint,   new BasicMutableProperty<double>( symbol_strings[ modulation_power_setpoint ], device_, "glmp?", "slmp" ) );
+    CreatePropertyIfSupported( analog_impedance,            new BasicMutableProperty<analog_impedance::symbol>( symbol_strings[ analog_impedance ], device_, "galis?", "salis" ) );
+
+    // ###
+    // Attach constraints to created properties:
+    
+    AttachConstraintIfPropertySupported( current_setpoint,          new RangeConstraint( 0.0f, GetProperty( max_current_setpoint )->Get<double>() ) );
+    AttachConstraintIfPropertySupported( power_setpoint,            new RangeConstraint( 0.0f, GetProperty( max_power_setpoint )->Get<double>() ) );
+    AttachConstraintIfPropertySupported( run_mode_cc_cp_mod,        new EnumConstraint<run_mode::cc_cp_mod::symbol>( laser::run_mode::cc_cp_mod::symbol_strings ) );
+    AttachConstraintIfPropertySupported( digital_modulation_flag,   new EnumConstraint<flag::symbol>( laser::flag::symbol_strings ) );
+    AttachConstraintIfPropertySupported( analog_modulation_flag,    new EnumConstraint<flag::symbol>( laser::flag::symbol_strings ) );
+    AttachConstraintIfPropertySupported( analog_impedance,          new EnumConstraint<flag::symbol>( laser::analog_impedance::symbol_strings ) );
+}
+
+void Laser::CreatePropertyIfSupported( const property::symbol propertySymbol, cobolt::Property* property )
+{
+    if ( !SupportsProperty( propertySymbol ) ) {
+        return;
+    }
+    
+    properties_[ property::ToString( propertySymbol ) ] = property;
+}
+
+void Laser::AttachConstraintIfPropertySupported( const property::symbol propertySymbol, cobolt::MutableProperty::Constraint* constraint )
+{
+    if ( !SupportsProperty( propertySymbol ) ) {
         return;
     }
 
-    ClearProperties();
+    MutableProperty* mutableProperty = dynamic_cast<MutableProperty*>( properties_[ property::ToString( propertySymbol ) ] );
 
-    properties_[ property::firmware_version           ] = new DefaultProperty<std::string>                    ( property::firmware_version,            device_, "gfv?"                        );
-    properties_[ property::wavelength                 ] = new DefaultProperty<std::string>                    ( property::wavelength,                  device_, ""                            );
-    properties_[ property::serial_number              ] = new DefaultProperty<std::string>                    ( property::serial_number,               device_, "gsn?"                        );
-    properties_[ property::firmware_version           ] = new DefaultProperty<std::string>                    ( property::firmware_version,            device_, ""                            );
-    properties_[ property::operating_hours            ] = new DefaultProperty<std::string>                    ( property::operating_hours,             device_, "hrs?"                        );
+    if ( mutableProperty == NULL ) {
 
-    properties_[ property::current_setpoint           ] = new DefaultMutableProperty<double>                  ( property::current_setpoint,            device_, "glc?",      "slc"            );
-    properties_[ property::max_current_setpoint       ] = new MaxLaserCurrentProperty<double>                 ( property::max_current_setpoint,        device_, ""                            );
-    properties_[ property::current_reading            ] = new DefaultProperty<double>                         ( property::current_reading,             device_, "i?"                          );
-    properties_[ property::power_setpoint             ] = new DefaultMutableProperty<double>                  ( property::power_setpoint,              device_, "p?",        "slp"            );
-    properties_[ property::max_power_setpoint         ] = new DefaultProperty<double>                         ( property::max_power_setpoint,          device_, ""                            );
+        Logger::Instance()->Log( "Failed to attach constraint to property '" + property::ToString( propertySymbol ) + "'.", true );
+        return;
+    }
     
-    properties_[ property::power_reading              ] = new DefaultProperty<double>                         ( property::power_reading,               device_, "pa?"                         );
-    properties_[ property::toggle                     ] = new ToggleProperty                                  ( property::toggle,                      device_, "l?",        "l0",      "l1"  );
-    properties_[ property::paused                     ] = new LaserPausedProperty                             ( property::paused,                      device_                                );
-    properties_[ property::run_mode                   ] = new DefaultMutableProperty<run_mode::type>          ( property::run_mode,                    device_, "gam?", "sam"                 );
-    properties_[ property::digital_modulation_flag    ] = new DefaultMutableProperty<flag::type>              ( property::digital_modulation_flag,     device_, "gdmes?",    "sdmes"          );
-    
-    properties_[ property::analog_modulation_flag     ] = new DefaultMutableProperty<flag::type>              ( property::analog_modulation_flag,      device_, "games?",    "sames"          );
-    properties_[ property::modulation_power_setpoint  ] = new DefaultMutableProperty<double>                  ( property::modulation_power_setpoint,   device_, "glmp?",     "slmp"           );
-    properties_[ property::analog_impedance           ] = new DefaultMutableProperty<analog_impedance::type>  ( property::analog_impedance,            device_, "galis?",    "salis"          );
-    
-    ( (MutableProperty*) properties_[ property::current_setpoint ] )->SetupWith( new RangeConstraint( 0.0f, properties_[ property::max_current_setpoint ]->Get<double>() ) );
-
-    string model;
-    device_->SendCommand( "glm?", model );
-
-    EnableProperty( laser::property::firmware_version );
+    mutableProperty->SetupWith( constraint );
 }

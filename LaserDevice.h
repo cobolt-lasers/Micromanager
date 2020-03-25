@@ -20,7 +20,7 @@ namespace cobolt
         /**
          * \brief Sends a command to the laser device. Returns true on success or false otherwise.
          */
-        virtual bool SendCommand( const std::string& command, std::string& answer ) const = 0;
+        virtual bool SendCommand( const std::string& command, std::string* response = NULL ) const = 0;
     };
 }
 

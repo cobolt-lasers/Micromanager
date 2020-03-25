@@ -22,10 +22,10 @@ public:
         virtual void SendLogMessage( const char* message, bool debug ) const = 0;
     };
 
-    static Logger& Instance()
+    static Logger* Instance()
     {
         static Logger instance;
-        return instance;
+        return &instance;
     }
 
     void SetupWithGateway( const Gateway* gateway )

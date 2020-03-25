@@ -24,60 +24,124 @@ NAMESPACE_COBOLT_BEGIN
 
 namespace laser
 {
-    #define FOREACH_TOGGLE_VALUE( GENERATOR ) \
-        GENERATOR( on,  "On" ) \
-        GENERATOR( off, "Off" )
-
-    namespace toggle { GENERATE_ENUM_STRING( FOREACH_TOGGLE_VALUE ); }
-
-    #undef FOREACH_TOGGLE_VALUE
-
-    #define FOREACH_FLAG_VALUE( GENERATOR ) \
-        GENERATOR( enabled,  "Enabled" ) \
-        GENERATOR( disabled, "Disabled" )
-
-    namespace flag { GENERATE_ENUM_STRING( FOREACH_FLAG_VALUE ); }
-
-    #undef FOREACH_FLAG_VALUE
-
-    #define FOREACH_ANALOG_IMPEDANCE_VALUE( GENERATOR ) \
-        GENERATOR( low,  "50 Ohm" ) \
-        GENERATOR( high, "1 kOhm" )
-
-    namespace analog_impedance { GENERATE_ENUM_STRING( FOREACH_ANALOG_IMPEDANCE_VALUE ); }
-
+     #define FOREACH_ANALOG_IMPEDANCE_VALUE( GENERATOR ) \
+        GENERATOR( high,    0,  "1 kOhm" ) \
+        GENERATOR( low,     1,  "50 Ohm" )
+    namespace analog_impedance { GENERATE_ENUM_STRING_MAP( FOREACH_ANALOG_IMPEDANCE_VALUE ); }
     #undef FOREACH_ANALOG_IMPEDANCE_VALUE
     
-    #define FOREACH_RUN_MODE_VALUE( GENERATOR ) \
-        GENERATOR( constant_current,    "Constant Current Mode" ) \
-        GENERATOR( constant_power,      "Constant Power Mode" ) \
-        GENERATOR( modulation,          "Modulation Mode" )
+    #define FOREACH_FLAG_VALUE( GENERATOR ) \
+        GENERATOR( disabled,    0,  "Disabled" ) \
+        GENERATOR( enabled,     1,  "Enabled" )
+    namespace flag { GENERATE_ENUM_STRING_MAP( FOREACH_FLAG_VALUE ); }
+    #undef FOREACH_FLAG_VALUE
+    
+    namespace run_mode
+    {
+        #define FOREACH_RUN_MODE_VALUE( GENERATOR ) \
+            GENERATOR( constant_current, 0,   "Constant Current" ) \
+            GENERATOR( constant_power,   1,   "Constant Power" ) \
+            GENERATOR( modulation,       2,   "Modulation" )
+        namespace cc_cp_mod { GENERATE_ENUM_STRING_MAP( FOREACH_RUN_MODE_VALUE ); }
+        #undef FOREACH_RUN_MODE_VALUE
+    }
 
-    namespace run_mode { GENERATE_ENUM_STRING( FOREACH_RUN_MODE_VALUE ); }
-
-    #undef FOREACH_RUN_MODE_VALUE
+    #define FOREACH_TOGGLE_VALUE( GENERATOR ) \
+        GENERATOR( off, 0,  "Off" ) \
+        GENERATOR( on,  1,  "On" )
+    namespace toggle { GENERATE_ENUM_STRING_MAP( FOREACH_TOGGLE_VALUE ); }
+    #undef FOREACH_TOGGLE_VALUE
 }
 
-template <typename T, typename S>
-S convert_to( const T& t );
+/**
+ * \brief Specializations of this function reformat strings received from get command executions into
+ *        corresponding value strings to be shown in the GUI.
+ *
+ * \example The result of a get run mode command is a number that the proper specialization of this
+ *          function will translate into a string intended for GUI presentation, thus a command response
+ *          saying '1' would be translated into, for example, "Constant Power".
+ */
+template <typename T>
+bool CommandResponseValueStringToGuiValueString( std::string& string );
 
-template <> std::string convert_to<Current, std::string> ( const Current& c ) { return std::to_string( (long double) c.mA() ); }
-template <> std::string convert_to<Power, std::string>   ( const Power& c )   { return std::to_string( (long double) c.mW() ); }
-template <> std::string convert_to<Voltage, std::string> ( const Voltage& c ) { return std::to_string( (long double) c.mV() ); }
+const char* g_GuiPropertyValue_InvalidResponse = "Invalid Value";
 
-template <> double convert_to<Current, double> ( const Current& c ) { return c.mA(); }
-template <> double convert_to<Power, double>   ( const Power& c )   { return c.mW(); }
-template <> double convert_to<Voltage, double> ( const Voltage& c ) { return c.mV(); }
+template <> bool CommandResponseValueStringToGuiValueString<std::string>( std::string& )
+{
+    return true;
+}
 
-template <> std::string convert_to<laser::toggle::type, std::string>            ( const laser::toggle::type& t )           { return laser::toggle::ToString( t ); }
-template <> std::string convert_to<laser::flag::type, std::string>              ( const laser::flag::type& t )             { return laser::flag::ToString( t ); }
-template <> std::string convert_to<laser::run_mode::type, std::string>          ( const laser::run_mode::type& t )         { return laser::run_mode::ToString( t ); }
-template <> std::string convert_to<laser::analog_impedance::type, std::string>  ( const laser::analog_impedance::type& t ) { return laser::analog_impedance::ToString( t ); }
+template <> bool CommandResponseValueStringToGuiValueString<double>( std::string& )
+{
+    return true;
+}
 
-template <> laser::toggle::type             convert_to<std::string, laser::toggle::type>( const std::string& s )           { return laser::toggle::FromString( s ); }
-template <> laser::flag::type               convert_to<std::string, laser::flag::type>( const std::string& s )             { return laser::flag::FromString( s ); }
-template <> laser::run_mode::type           convert_to<std::string, laser::run_mode::type>( const std::string& s )         { return laser::run_mode::FromString( s ); }
-template <> laser::analog_impedance::type   convert_to<std::string, laser::analog_impedance::type>( const std::string& s ) { return laser::analog_impedance::FromString( s ); }
+template <> bool CommandResponseValueStringToGuiValueString<laser::analog_impedance::symbol>( std::string& string )
+{
+    const int value = atoi( string.c_str() );
+    if ( value != 0 && value != 1 ) { string = g_GuiPropertyValue_InvalidResponse; return false; }
+    string = laser::analog_impedance::ToString( ( laser::analog_impedance::symbol )value );
+    return true;
+}
+
+template <> bool CommandResponseValueStringToGuiValueString<laser::flag::symbol>( std::string& string )
+{
+    const int value = atoi( string.c_str() );
+    if ( value != 0 && value != 1 ) { string = g_GuiPropertyValue_InvalidResponse; return false; }
+    string = laser::flag::ToString( (laser::flag::symbol) value );
+    return true;
+}
+
+template <> bool CommandResponseValueStringToGuiValueString<laser::run_mode::cc_cp_mod::symbol>( std::string& string )
+{
+    const int value = atoi( string.c_str() );
+    if ( value != 0 && value != 1 ) { string = g_GuiPropertyValue_InvalidResponse; return false; }
+    string = laser::run_mode::cc_cp_mod::ToString( (laser::run_mode::cc_cp_mod::symbol) value );
+    return true;
+}
+
+/**
+ * \brief Specializations of this function reformat GUI value strings into valid command argument strings.
+ *
+ * \example If run mode in gui is set to "Constant Power" then running the right specialization here will
+ *          translate that into the corresponding run mode number.
+ */
+template <typename T>
+bool GuiValueStringToCommandArgumentString( std::string& string );
+
+template <> bool GuiValueStringToCommandArgumentString<std::string>( std::string& string )
+{
+    return true;
+}
+
+template <> bool GuiValueStringToCommandArgumentString<double>( std::string& string )
+{
+    return true;
+}
+
+template <> bool GuiValueStringToCommandArgumentString<laser::analog_impedance::symbol>( std::string& string )
+{
+    const laser::analog_impedance::symbol value = laser::analog_impedance::FromString( string );
+    if ( value == laser::analog_impedance::__undefined__ ) { return false; }
+    string = std::to_string( (_Longlong) value );
+    return true;
+}
+
+template <> bool GuiValueStringToCommandArgumentString<laser::flag::symbol>( std::string& string )
+{
+    const laser::flag::symbol value = laser::flag::FromString( string );
+    if ( value == laser::flag::__undefined__ ) { return false; }
+    string = std::to_string( (_Longlong) value );
+    return true;
+}
+
+template <> bool GuiValueStringToCommandArgumentString<laser::run_mode::cc_cp_mod::symbol>( std::string& string )
+{
+    const laser::run_mode::cc_cp_mod::symbol value = laser::run_mode::cc_cp_mod::FromString( string );
+    if ( value == laser::run_mode::cc_cp_mod::__undefined__ ) { return false; }
+    string = std::to_string( (_Longlong) value );
+    return true;
+}
 
 NAMESPACE_COBOLT_END
 

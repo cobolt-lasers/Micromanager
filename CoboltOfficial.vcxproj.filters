@@ -18,9 +18,57 @@
     <ClCompile Include="CoboltOfficial.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Current.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Laser.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Power.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PrefixedValue.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Property.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Voltage.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CoboltOfficial.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="cobolt.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Current.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Laser.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Logger.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Power.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Property.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="types.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Voltage.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="LaserDevice.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PrefixedValue.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

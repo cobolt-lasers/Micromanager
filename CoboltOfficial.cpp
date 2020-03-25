@@ -93,7 +93,7 @@ CoboltOfficial::CoboltOfficial() :
     port_( "None" ),
     bBusy_( false )
 {
-    cobolt::Logger::Instance().SetupWithGateway( this );
+    cobolt::Logger::Instance()->SetupWithGateway( this );
 
     // TODO Auto-generated constructor stub
     assert( strlen( g_DeviceName ) < (unsigned int) MM::MaxStrLength );
@@ -112,10 +112,10 @@ CoboltOfficial::CoboltOfficial() :
     setupWhenClosingShutter.backupIsActive = false;
 
     // Create properties:
-    CreateProperty( MM::g_Keyword_Name,         g_DeviceName,           MM::String, true );
-    CreateProperty( "Vendor",                   g_DeviceVendorName,     MM::String, true );
-    CreateProperty( MM::g_Keyword_Description,  g_DeviceDescription,    MM::String, true );
-    CreateProperty( MM::g_Keyword_Port,         g_Default_Str_Unknown,  MM::String, false, new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_Port ), true );
+    CreateProperty( MM::g_Keyword_Name,         g_DeviceName,               MM::String, true );
+    CreateProperty( "Vendor",                   g_DeviceVendorName,         MM::String, true );
+    CreateProperty( MM::g_Keyword_Description,  g_DeviceDescription,        MM::String, true );
+    CreateProperty( MM::g_Keyword_Port,         g_Property_Unknown_Value,   MM::String, false, new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_Port ), true );
     
     UpdateStatus();
 }
@@ -130,18 +130,14 @@ CoboltOfficial::~CoboltOfficial()
 //
 int CoboltOfficial::SetOpen( bool open )
 {
-    if ( laser_->toggle->Fetch() != laser::toggle::on ) {
+    if ( !laser_->IsOn() ) {
         return OPERATING_SHUTTER_WITH_LASER_OFF;
     }
     
     if ( open ) {
-        laser_->paused->Set( false ); // laser_->UnpauseShining()
+        laser_->SetPaused( false );
     } else {
-        laser_->paused->Set( true ); // laser_->PauseShining()
-    }
-
-    if ( !laser_->paused->LastRequestSuccessful() ) {
-        return DEVICE_ERR;
+        laser_->SetPaused( true );
     }
     
     return DEVICE_OK;
@@ -152,7 +148,7 @@ int CoboltOfficial::SetOpen( bool open )
  */
 int CoboltOfficial::GetOpen( bool& open )
 {
-    open = ( laser_->toggle->Fetch() == laser::toggle::on && !laser_->paused->Fetch() );
+    open = ( laser_->IsOn() && !laser_->IsPaused() );
 
     return DEVICE_OK;
 }
@@ -166,18 +162,12 @@ int CoboltOfficial::Fire( double deltaT )
     int reply = SetOpen( true );
 
     if ( reply == DEVICE_OK ) {
-        CDeviceUtils::SleepMs( (long) ( deltaT + 0.5 ) );
+        CDeviceUtils::SleepMs( (long) ( deltaT + 0.5f ) );
 
         reply = SetOpen( false );
     }
 
     return reply;
-}
-
-int CoboltOfficial::ExposeToGui( const Property* property )
-{
-    CPropertyAction* action = new CPropertyAction( this, &CoboltOfficial::OnLaserPropertyAction );
-    return CreateProperty( property->Name(), property->FetchAsString().c_str(), property->TypeInGui(), !property->MutableInGui(), action );
 }
 
 int CoboltOfficial::Initialize() // TODO NOW: implement this then make laser model adaptation work
@@ -195,145 +185,11 @@ int CoboltOfficial::Initialize() // TODO NOW: implement this then make laser mod
     laser_->SetupWithLaserDevice( this );
 
     int result;
-
-    Laser::PropertyIterator it = laser_->PropertyIteratorBegin();
-    while ( it != laser_->PropertyIteratorEnd() ) {
+    
+    for ( Laser::PropertyIterator it = laser_->GetPropertyIteratorBegin(); it != laser_->GetPropertyIteratorEnd(); it++ ) {
         ExposeToGui( it->second );
         it->second->IntroduceToGuiEnvironment( this );
     }
-    
-
-    /* LASER POWER SETTING [mW] (Initialise to safe state, i.e. 0.0) */
-    laserPowerSetting_ = 0.0;
-    result = SetLaserPowerSetting( laserPowerSetting_ );
-    if ( result != DEVICE_OK ) {
-        /* Failed to update laser with laserpowersetting */
-        return result;
-    }
-    pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_PowerSetpoint );
-    result = CreateProperty( g_PropertyLaserPowerSetting, g_Default_Str_Double_0, MM::Float, false, pAct );
-    if ( DEVICE_OK != result ) {
-        return result;
-    }
-    /* Create limits 0.0 ... Laser Max Power Setting */
-    SetPropertyLimits( g_PropertyLaserPowerSetting, 0.0, ( laserMaxPower_ * 1000.0 ) );
-
-    /* LASER CURRENT SETTING [mA] (Initialise to safe state, i.e. 0.0) */
-    laserCurrentSetting_ = 0.0;
-    result = SetLaserDriveCurrent( laserCurrentSetting_ );
-    if ( result != DEVICE_OK ) {
-        /* Failed to update laser with laserdrivecurrent */
-        return result;
-    }
-    pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_CurrentSetpoint );
-    result = CreateProperty( g_PropertyLaserCurrentSetting, g_Default_Str_Double_0, MM::Float, false, pAct );
-    if ( DEVICE_OK != result ) {
-        return result;
-    }
-    /* Create limits 0.0 ... Laser Max Current Setting */
-    SetPropertyLimits( g_PropertyLaserCurrentSetting, 0.0, laserMaxCurrent_ );
-
-
-    /* LASER STATUS */
-    laserStatus_ = GetLaserStatus();
-    if ( laserStatus_.compare( g_PropertyOff ) != 0 ) {
-        /* We started the initialize with turning the lasers off */
-        LogMessage( "CoboltOfficial::Initialize(): Laser is not turned off as expected! Got: " + laserStatus_, true );
-        return DEVICE_ERR;
-    }
-    pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_LaserToggle );
-    result = CreateProperty( g_PropertyLaserStatus, laserStatus_.c_str(), MM::String, false, pAct );
-    if ( DEVICE_OK != result ) {
-        return result;
-    }
-    /* Create allowed values On/Off */
-    allowedValues.clear();
-    allowedValues.push_back( g_PropertyOn );
-    allowedValues.push_back( g_PropertyOff );
-    SetAllowedValues( g_PropertyLaserStatus, allowedValues );
-
-    /* LASER OPERATING MODE  (Initialise to Constant Power)*/
-    result = SetLaserOperatingMode( CONSTANT_POWER_MODE );
-    if ( DEVICE_OK != result ) {
-        return result;
-    }
-    /* Note that as long LaserStatus is Off, the mode returned from laser is OFF */
-    laserOperatingMode_ = LASER_OFF_MODE;
-    pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_RunMode );
-    result = CreateProperty( g_PropertyOperatingMode, laserOperatingMode_.c_str(), MM::String, false, pAct );
-    if ( DEVICE_OK != result ) {
-        return result;
-    }
-    /* Create allowed values */
-    allowedValues.clear();
-    allowedValues.push_back( CONSTANT_POWER_MODE );
-    allowedValues.push_back( CONSTANT_CURRENT_MODE );
-    allowedValues.push_back( MODULATION_MODE );
-    allowedValues.push_back( LASER_OFF_MODE );
-    SetAllowedValues( g_PropertyOperatingMode, allowedValues );
-
-    /* LASER OUTPUT */
-    laserPowerOutput_ = GetLaserPowerOutput();
-    std::string tmpString = std::to_string( (long double) laserPowerOutput_ ) + " mW";
-    pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_PowerReading );
-    result = CreateProperty( g_PropertyCurrentLaserOutput, tmpString.c_str(), MM::String, true, pAct );
-    if ( DEVICE_OK != result ) {
-        return result;
-    }
-
-    /* MODULATION LASER POWER [mW]  (Initialise to safe state, i.e. 0.0) */
-    /* TODO: If set modulation laser power command is not supported, skip the property */
-    modulationPowerSetting_ = 0.0;
-    result = SetModulationPowerSetting( modulationPowerSetting_ );
-    if ( DEVICE_OK == result ) {
-        pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_ModulationPowerSetpoint );
-        result = CreateProperty( g_PropertyModulationPower, std::to_string( (long double) modulationPowerSetting_ ).c_str(), MM::Float, false, pAct );
-        if ( DEVICE_OK != result ) {
-            return result;
-        }
-        /* TODO: Is it correct to use laser max power as max laser modulation power? */
-        /* Create limits 0.0 ... Laser Max Power */
-        SetPropertyLimits( g_PropertyModulationPower, 0.0, ( laserMaxPower_ * 1000.0 ) );
-    }
-
-    /* DIGITAL MODULATION STATE (Enabled/Disabled) */
-    digitalModulationState_ = GetDigitalModulationState();
-    pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_DigitalModulationFlag );
-    result = CreateProperty( g_PropertyDigitalModulationState, digitalModulationState_.c_str(), MM::String, false, pAct );
-    if ( DEVICE_OK != result ) {
-        return result;
-    }
-    /* Create allowed values */
-    allowedValues.clear();
-    allowedValues.push_back( g_PropertyEnabled );
-    allowedValues.push_back( g_PropertyDisabled );
-    SetAllowedValues( g_PropertyDigitalModulationState, allowedValues );
-
-    /* ANALOG MODULATION STATE (Enabled/Disabled) */
-    analogModulationState_ = GetAnalogModulationState();
-    pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_AnalogModulationFlag );
-    result = CreateProperty( g_PropertyAnalogModulationState, analogModulationState_.c_str(), MM::String, false, pAct );
-    if ( DEVICE_OK != result ) {
-        return result;
-    }
-    /* Create allowed values */
-    allowedValues.clear();
-    allowedValues.push_back( g_PropertyEnabled );
-    allowedValues.push_back( g_PropertyDisabled );
-    SetAllowedValues( g_PropertyAnalogModulationState, allowedValues );
-
-    /* ANALOG IMPEDANCE STATE (50 Ohm/1 kOhm) */
-    analogImpedanceState_ = GetAnalogImpedanceState();
-    pAct = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_AnalogImpedance );
-    result = CreateProperty( g_PropertyAnalogImpedanceState, analogImpedanceState_.c_str(), MM::String, false, pAct );
-    if ( DEVICE_OK != result ) {
-        return result;
-    }
-    /* Create allowed values */
-    allowedValues.clear();
-    allowedValues.push_back( g_PropertyLowImp );
-    allowedValues.push_back( g_PropertyHighImp );
-    SetAllowedValues( g_PropertyAnalogImpedanceState, allowedValues );
 
     /* Laser is completely initialised */
     bInitialized_ = true;
@@ -366,9 +222,31 @@ void CoboltOfficial::GetName( char* name ) const
 // Action interface
 //
 
-int CoboltOfficial::OnLaserPropertyAction( MM::PropertyBase* guiProperty, MM::ActionType action )
+int CoboltOfficial::OnPropertyAction_Port( MM::PropertyBase* guiProperty, MM::ActionType action )
 {
-    laser_->Property( guiProperty->GetName() )->OnGuiAction( guiProperty, action );
+    if ( action == MM::BeforeGet ) {
+
+        guiProperty->Set( port_.c_str() );
+
+    } else if ( action == MM::AfterSet ) {
+
+        if ( bInitialized_ ) {
+            
+            // Port change after initialization not allowed, thus reset port value:
+            guiProperty->Set( port_.c_str() );
+            
+            return ERR_PORT_CHANGE_FORBIDDEN;
+        }
+
+        guiProperty->Get( port_ );
+    }
+
+    return DEVICE_OK;
+}
+
+int CoboltOfficial::OnPropertyAction_Laser( MM::PropertyBase* guiProperty, MM::ActionType action )
+{
+    laser_->GetProperty( guiProperty->GetName() )->OnGuiAction( guiProperty, action );
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -417,118 +295,8 @@ int CoboltOfficial::SendSerialCmd( const std::string& command, std::string& answ
     return reply;
 }
 
-int CoboltOfficial::CheckIfPauseCmdIsSupported() // TODO: reuse later?
+int CoboltOfficial::ExposeToGui( const Property* property )
 {
-    std::string answer;
-    int reply = SendSerialCmd( "l0r", answer );
-
-    if ( reply == DEVICE_UNSUPPORTED_COMMAND ) {
-
-        /* The Laser Pause Command is not supported */
-        bLaserPausCmdIsSupported_ = false;
-        reply = DEVICE_OK;
-
-    } else if ( reply == DEVICE_OK ) {
-
-        /* The Laser Pause Command is supported */
-        bLaserPausCmdIsSupported_ = true;
-
-    } else {
-
-        /* TODO: Error handling. Some other problem with the sent pause command
-         * Assume not supported.
-         */
-        bLaserPausCmdIsSupported_ = false;
-    }
-
-    return reply;
-}
-
-/**
- * Extracts the string parts from the glm? command and put them one by one in a vector.
- * expects a string where the parts are separated with the character '-'
- *
- * For example WWWW-06-XX-PPPP-CCC
- */
-void CoboltOfficial::ExtractGlmReplyParts( std::string answer, std::vector<std::string> &svec ) // TODO: same as below
-{
-    std::string tmpstring;
-
-    tmpstring.clear();
-
-    for ( std::string::iterator its = answer.begin(); its < answer.end(); its++ ) {
-        if ( *its != '-' ) {
-            tmpstring.push_back( *its );
-        } else if ( *its == '\r' ) {
-            svec.push_back( tmpstring );
-            tmpstring.clear();
-            /* The entire string is handled, make sure no more iterations. */
-            its = answer.end();
-        } else {
-            svec.push_back( tmpstring );
-            tmpstring.clear();
-        }
-    }
-}
-
-int CoboltOfficial::HandleGLMCmd() // TODO: move parts of the implementation to the right place, get rid of rest
-{
-    //return laser_->
-
-    /* First element is always laser model in vector */
-    std::string answer;
-    int reply;
-    std::vector<std::string> svec;
-
-    reply = SendSerialCmd( "glm?", answer );
-
-    if ( reply == DEVICE_OK ) {
-        /* Detect Laser model */
-        if ( answer.find( "-06-" ) != std::string::npos ) {
-            /* 06-Series found
-             * WWWW-06-XX-PPPP-CCC
-             */
-            svec.push_back( MODEL_06 );
-            LogMessage( "CoboltOfficial::HandleGLMCmd: Model = " + MODEL_06, true );
-
-            ExtractGlmReplyParts( answer, svec );
-
-            laserModel_ = svec[ 0 ];
-            laserWavelength_ = std::stol( svec[ 1 ] );
-            laserMaxPower_ = ( std::stod( svec[ 4 ] ) / 1000.0 ) + 0.005; // [W]
-        } else if ( answer.find( "-08-" ) != std::string::npos ) {
-            /* 08-Series found
-             * WWWW-08-XX-Y-PPPP-CCC
-             */
-            svec.push_back( MODEL_08 );
-
-            ExtractGlmReplyParts( answer, svec );
-
-            laserModel_ = svec[ 0 ];
-            laserWavelength_ = std::stol( svec[ 1 ] );
-            laserMaxPower_ = ( std::stod( svec[ 5 ] ) / 1000.0 ) + 0.005;
-
-        } else if ( ( answer.find( "ML-" ) != std::string::npos ) || ( answer.find( "MF-" ) != std::string::npos ) ) {
-            /* Skyra-Series found
-             * ML-AAA-BBB-CCC-DDD-XXX-YYY-ZZZ-QQQ-WWW
-             */
-            svec.push_back( MODEL_SKYRA );
-
-            ExtractGlmReplyParts( answer, svec );
-
-            /* Until implemented */
-            return ERR_UNKNOWN_COBOLT_LASER_MODEL;
-
-            /* TODO: Extract all laser properties from the vector */
-        } else {
-            /* TODO: Error handling for unknown laser model */
-            return ERR_UNKNOWN_COBOLT_LASER_MODEL;
-        }
-    } else {
-        /* TODO: Error handling for failed send serial command. */
-        LogMessage( "CoboltOfficial::HandleGLMCmd: Failed to send glm?. Errorcode: " + std::to_string( (_Longlong) reply ), true );
-        return reply;
-    }
-
-    return reply;
+    CPropertyAction* action = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_Laser );
+    return CreateProperty( property->Name(), property->Get<std::string>().c_str(), property->TypeInGui(), !property->MutableInGui(), action );
 }

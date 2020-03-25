@@ -65,32 +65,13 @@ public:
     //////////////////////////////////////////////////////////////////////////////
     // Property Action Handlers
     //
-    int OnLaserPropertyAction( MM::PropertyBase*, MM::ActionType );
-
-    int OnPropertyAction_Port                       ( MM::PropertyBase*, MM::ActionType );
-    int OnPropertyAction_Model                      ( MM::PropertyBase*, MM::ActionType );
-    int OnPropertyAction_SerialNumber               ( MM::PropertyBase*, MM::ActionType );
-    int OnPropertyAction_FirmwareVersion            ( MM::PropertyBase*, MM::ActionType );
-    int OnPropertyAction_Wavelength                 ( MM::PropertyBase*, MM::ActionType );
-    int OnPropertyAction_MaxPowerSetpoint           ( MM::PropertyBase*, MM::ActionType );
-    int OnPropertyAction_MaxCurrentSetpoint         ( MM::PropertyBase*, MM::ActionType );
-    int OnPropertyAction_PowerSetpoint              ( MM::PropertyBase*, MM::ActionType );
-    int OnPropertyAction_CurrentSetpoint            ( MM::PropertyBase*, MM::ActionType );
-    int OnPropertyAction_OperatingHours             ( MM::PropertyBase*, MM::ActionType );
-    int OnPropertyAction_LaserToggle                ( MM::PropertyBase*, MM::ActionType );
-    int OnPropertyAction_RunMode                    ( MM::PropertyBase*, MM::ActionType );
-    int OnPropertyAction_PowerReading               ( MM::PropertyBase*, MM::ActionType );
-    int OnPropertyAction_ModulationPowerSetpoint    ( MM::PropertyBase*, MM::ActionType );
-    int OnPropertyAction_DigitalModulationFlag      ( MM::PropertyBase*, MM::ActionType );
-    int OnPropertyAction_AnalogModulationFlag       ( MM::PropertyBase*, MM::ActionType );
-    int OnPropertyAction_AnalogImpedance            ( MM::PropertyBase*, MM::ActionType );
+    int OnPropertyAction_Port( MM::PropertyBase*, MM::ActionType );
+    int OnPropertyAction_Laser( MM::PropertyBase*, MM::ActionType );
 
 private:
 
     int SendSerialCmd( const std::string& command, std::string& answer );
-    int CheckIfPauseCmdIsSupported();
-    void ExtractGlmReplyParts( std::string answer, std::vector<std::string> &svec );
-    int HandleGLMCmd();
+    int ExposeToGui( const cobolt::Property* property );
     
     cobolt::Laser* laser_;
 

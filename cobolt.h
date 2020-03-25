@@ -30,11 +30,12 @@
 #define CSTRING_VALUE_GENERATOR2( _, s ) STRINGIFY( s ),
 #define QUOTED_CSTRING_VALUE_GENERATOR( _1, _2, s ) s,
 
-#define GENERATE_ENUM_STRING_MAP( FOREACH )                                                                                                                     \
-    enum type { FOREACH( ENUM_VALUE_PAIR_GENERATOR3 ) __count__, __undefined__ };                                                                                \
-    static const char* string[] = { FOREACH( QUOTED_CSTRING_VALUE_GENERATOR ) "", "" };                                                                     \
-    type FromString( const std::string& s ) { for ( int i = 0; i < __count__; i++ ) if ( s == string[ i ] ) return (type) i; return type::__undefined__; }  \
-    const char* ToString( type t ) { if ( t < __count__ && t >= 0 ) return string[ (int) t ]; return ""; }
+// TODO: rename 'symbol' to 'value'?
+#define GENERATE_ENUM_STRING_MAP( FOREACH )                                                                                                                             \
+    enum symbol { FOREACH( ENUM_VALUE_PAIR_GENERATOR3 ) __count__, __undefined__ };                                                                                     \
+    static std::string symbol_strings[] = { FOREACH( QUOTED_CSTRING_VALUE_GENERATOR ) "", "" };                                                                         \
+    symbol FromString( const std::string& s ) { for ( int i = 0; i < __count__; i++ ) if ( s == symbol_strings[ i ] ) return (symbol) i; return symbol::__undefined__; }  \
+    std::string ToString( symbol t ) { if ( t < __count__ && t >= 0 ) return symbol_strings[ (int) t ]; return ""; }
 
 #include "Logger.h"
 
