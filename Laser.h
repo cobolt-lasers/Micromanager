@@ -38,7 +38,7 @@ namespace laser
         GENERATOR( max_power_setpoint,        10,  "Max Power Setpoint"        ) \
                                                                                  \
         GENERATOR( power_reading,             11,  "Measured Power"            ) \
-        GENERATOR( toggle,                    12,  "On Status"                 ) \
+        GENERATOR( toggle,                    12,  "Status"                    ) \
         GENERATOR( paused,                    13,  "Paused"                    ) \
         GENERATOR( run_mode_cc_cp_mod,        14,  "Run Mode"                  ) \
         GENERATOR( digital_modulation_flag,   15,  "Digital Modulation"        ) \
@@ -50,31 +50,6 @@ namespace laser
     namespace property { GENERATE_ENUM_STRING_MAP( FOREACH_PROPERTY ); }
 
     #undef FOREACH_PROPERTY
-
-    //namespace property
-    //{
-    //    const char* model                        = "Model";
-    //    const char* wavelength                   = "Wavelength";
-    //    const char* serial_number                = "Serial Number";
-    //    const char* firmware_version             = "Firmware Version";
-    //    const char* operating_hours              = "Operating Hours";
-
-    //    const char* current_setpoint             = "Current Setpoint";
-    //    const char* max_current_setpoint         = "Max Current Setpoint";
-    //    const char* current_reading              = "Measured Current";
-    //    const char* power_setpoint               = "Power Setpoint";
-    //    const char* max_power_setpoint           = "Max Power Setpoint";
-
-    //    const char* power_reading                = "Measured Power";
-    //    const char* toggle                       = "On Status";
-    //    const char* paused                       = "Paused";
-    //    const char* run_mode                     = "Run Mode";
-    //    const char* digital_modulation_flag      = "Digital Modulation";
-
-    //    const char* analog_modulation_flag       = "Analog Modulation";
-    //    const char* modulation_power_setpoint    = "Modulation Power Setpoint";
-    //    const char* analog_impedance             = "Analog Impedance";
-    //}
 }
 
 class Laser
@@ -121,7 +96,8 @@ private:
 
     void Incarnate();
 
-    void CreatePropertyIfSupported( const laser::property::symbol, cobolt::Property* property );
+    void RegisterProperty( const laser::property::symbol, cobolt::Property* property );
+    void RegisterPropertyIfSupported( const laser::property::symbol, cobolt::Property* property );
     void AttachConstraintIfPropertySupported( const laser::property::symbol, cobolt::MutableProperty::Constraint* );
 
     std::map<std::string, cobolt::Property*> properties_;

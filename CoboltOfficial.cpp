@@ -1,15 +1,12 @@
-///////////////////////////////////////////////////////////////////////////////
-// FILE:          CoboltOfficial.h
-// PROJECT:       Micro-Manager
-// SUBSYSTEM:     DeviceAdapters
-//-----------------------------------------------------------------------------
-// DESCRIPTION:   Official laser controller for the COBOLT lasers, via serial port
-//                communication.
-// COPYRIGHT:     COBOLT, a Hübner Group Company
-// LICENSE:       ???? (LGPL) // TODO: Set proper license
-// AUTHORS:       ????
-//
-//
+/**
+ * \file        CoboltOfficial.cpp
+ *
+ * \brief       Official device adapter for COBOLT lasers.
+ *
+ * \authors     Johan Crone, Lukas Kalinski
+ *
+ * \copyright   Cobolt AB, 2020. All rights reserved. // TODO: Set proper license
+ */
 
 #include "CoboltOfficial.h"
 #include "Power.h"
@@ -17,21 +14,6 @@
 
 using namespace std;
 using namespace cobolt;
-
-//////////////////////////////////////////////////////////////////////////////
-// Internal types.
-//
-typedef struct
-{
-    bool backupIsActive;
-    std::string mode;
-    double outputPowerSetting;
-    double driveCurrentSetting;
-    bool digitalModActive;
-    bool analogModActive;
-    double modPowerSetting;
-    std::string analogImpValue;
-} BackedUpDataStruct;
 
 //////////////////////////////////////////////////////////////////////////////
 // Device Properties strings
@@ -43,25 +25,8 @@ const char * g_DeviceVendorName = "COBOLT: a HÜBNER Group Company";
 //////////////////////////////////////////////////////////////////////////////
 // Commonly used strings
 //
-const char * g_SendTerm = "\r";
-const char * g_RecvTerm = "\r\n";
 
 const char* const g_Property_Port_None = "None";
-
-const char* const g_Property_Unknown_Value = "Unknown";
-
-const char * const g_Default_Str_Empty = "";
-//const char * const g_Default_Str_Unknown = "Unknown";
-const char * const g_Default_Str_Double_0 = "0.0";
-
-//////////////////////////////////////////////////////////////////////////////
-// Cobolt Laser constants
-//
-const std::string MODEL_06 = "06-laser";
-const std::string MODEL_08 = "08-laser";
-const std::string MODEL_SKYRA = "Skyra-laser";
-
-static BackedUpDataStruct setupWhenClosingShutter;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Exported MMDevice API
@@ -102,20 +67,17 @@ CoboltOfficial::CoboltOfficial() :
 
     // Map error codes to strings:
     SetErrorText( ERR_PORT_CHANGE_FORBIDDEN,                "You can't change the port after device has been initialized."          );
-    SetErrorText( ERR_SERIAL_PORT_NOT_SELECTED,                "Serial port must not be undefined when initializing!"                  );
+    SetErrorText( ERR_SERIAL_PORT_NOT_SELECTED,             "Serial port must not be undefined when initializing!"                  );
     SetErrorText( ERR_UNKNOWN_COBOLT_LASER_MODEL,           "Cobolt Laser Model is not yet supported!"                              );
     SetErrorText( OPERATING_SHUTTER_WITH_LASER_OFF,         "Cannot operate shutter while the Laser is turned off!"                 );
     SetErrorText( ERR_LASER_OPERATING_MODE_NOT_SUPPORTED,   "Laser Operating Mode not yet implemented or not supported!"            );
     SetErrorText( ERR_CANNOT_SET_MODE_OFF,                  "Cannot set Operating mode Off! Use Laser Status to turn On and Off!"   );
 
-    /* Nothing is backed up yet */
-    setupWhenClosingShutter.backupIsActive = false;
-
     // Create properties:
     CreateProperty( MM::g_Keyword_Name,         g_DeviceName,               MM::String, true );
     CreateProperty( "Vendor",                   g_DeviceVendorName,         MM::String, true );
     CreateProperty( MM::g_Keyword_Description,  g_DeviceDescription,        MM::String, true );
-    CreateProperty( MM::g_Keyword_Port,         g_Property_Unknown_Value,   MM::String, false, new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_Port ), true );
+    CreateProperty( MM::g_Keyword_Port,         g_Property_Port_None,       MM::String, false, new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_Port ), true );
     
     UpdateStatus();
 }
@@ -125,9 +87,54 @@ CoboltOfficial::~CoboltOfficial()
     Shutdown();
 }
 
-//////////////////////////////////////////////////////////////////////////////
-// Shutter API
-//
+int CoboltOfficial::Initialize()
+{
+    if ( bInitialized_ ) {
+        return DEVICE_OK;
+    }
+
+    if ( port_ == g_Property_Port_None ) {
+
+        LogMessage( "CoboltOfficial::Initialize(): Serial port not selected", true );
+        return ERR_SERIAL_PORT_NOT_SELECTED;
+    }
+
+    laser_->SetupWithLaserDevice( this );
+
+    int result;
+
+    for ( Laser::PropertyIterator it = laser_->GetPropertyIteratorBegin(); it != laser_->GetPropertyIteratorEnd(); it++ ) {
+        ExposeToGui( it->second );
+        it->second->IntroduceToGuiEnvironment( this );
+    }
+
+    /* Laser is completely initialised */
+    bInitialized_ = true;
+
+    return DEVICE_OK;
+}
+
+int CoboltOfficial::Shutdown()
+{
+    if ( bInitialized_ == true ) {
+        /* TODO: Should the laser be turned off first? */
+        setupWhenClosingShutter.backupIsActive = false;
+        bInitialized_ = false;
+    }
+
+    return DEVICE_OK;
+}
+
+bool CoboltOfficial::Busy()
+{
+    return bBusy_;
+}
+
+void CoboltOfficial::GetName( char* name ) const
+{
+    CDeviceUtils::CopyLimitedString( name, g_DeviceName );
+}
+
 int CoboltOfficial::SetOpen( bool open )
 {
     if ( !laser_->IsOn() ) {
@@ -170,57 +177,47 @@ int CoboltOfficial::Fire( double deltaT )
     return reply;
 }
 
-int CoboltOfficial::Initialize() // TODO NOW: implement this then make laser model adaptation work
+/******************************************************************************
+ * Description:
+ * Adds some Cobolt laser serial communication handling on top of the Micro-manager
+ * serial communication class' handling.
+ *
+ * Sends the command, fetches the laser reply and detects unsupported laser commands.
+ *
+ * Input:
+ *    std::string  command - The command to send to the laser.
+ *    std::string& answer  - contains the laser's reply.
+ *
+ * Returns:
+ *    int - DEVICE_OK if successful,
+ *          DEVICE_UNSUPPORTED_COMMAND if illegal or unsupported laser command
+ *          The error code received from the Micro-Manager serial communication class.
+ */
+int CoboltOfficial::SendCommand( const std::string& command, std::string* response )
 {
-    if ( bInitialized_ ) {
-        return DEVICE_OK;
+    int reply = SendSerialCommand( port_.c_str(), command.c_str(), "\r" );
+
+    if ( reply != DEVICE_OK ) {
+
+        LogMessage( "CoboltOfficial::SendSerialCmd: SendSerialCommand Failed: " + std::to_string( (_Longlong) reply ), true );
+
+    } else if ( response != NULL ) {
+
+        reply = GetSerialAnswer( port_.c_str(), "\r\n", *response );
+
+        if ( reply != DEVICE_OK ) {
+
+            LogMessage( "CoboltOfficial::SendSerialCmd: GetSerialAnswer Failed: " + std::to_string( (_Longlong) reply ), true );
+
+        } else if ( response.find( "error" ) != std::string::npos ) { // TODO: make find case insensitive
+
+            LogMessage( "CoboltOfficial::SendSerialCmd: Sent: " + command + " Reply received: " + answer, true );
+            reply = DEVICE_UNSUPPORTED_COMMAND;
+        }
     }
 
-    if ( port_ == g_Property_Port_None ) {
-        
-        LogMessage( "CoboltOfficial::Initialize(): Serial port not selected", true );
-        return ERR_SERIAL_PORT_NOT_SELECTED;
-    }
-
-    laser_->SetupWithLaserDevice( this );
-
-    int result;
-    
-    for ( Laser::PropertyIterator it = laser_->GetPropertyIteratorBegin(); it != laser_->GetPropertyIteratorEnd(); it++ ) {
-        ExposeToGui( it->second );
-        it->second->IntroduceToGuiEnvironment( this );
-    }
-
-    /* Laser is completely initialised */
-    bInitialized_ = true;
-
-    return DEVICE_OK;
+    return reply;
 }
-
-int CoboltOfficial::Shutdown()
-{
-    if ( bInitialized_ == true ) {
-        /* TODO: Should the laser be turned off first? */
-        setupWhenClosingShutter.backupIsActive = false;
-        bInitialized_ = false;
-    }
-
-    return DEVICE_OK;
-}
-
-bool CoboltOfficial::Busy()
-{
-    return bBusy_;
-}
-
-void CoboltOfficial::GetName( char* name ) const
-{
-    CDeviceUtils::CopyLimitedString( name, g_DeviceName );
-}
-
-//////////////////////////////////////////////////////////////////////////////
-// Action interface
-//
 
 int CoboltOfficial::OnPropertyAction_Port( MM::PropertyBase* guiProperty, MM::ActionType action )
 {
@@ -247,52 +244,6 @@ int CoboltOfficial::OnPropertyAction_Port( MM::PropertyBase* guiProperty, MM::Ac
 int CoboltOfficial::OnPropertyAction_Laser( MM::PropertyBase* guiProperty, MM::ActionType action )
 {
     laser_->GetProperty( guiProperty->GetName() )->OnGuiAction( guiProperty, action );
-}
-
-//////////////////////////////////////////////////////////////////////////////
-// Private methods: Communication, laser command handling & help methods
-//
-
-/******************************************************************************
- * Description:
- * Adds some Cobolt laser serial communication handling on top of the Micro-manager
- * serial communication class' handling.
- *
- * Sends the command, fetches the laser reply and detects unsupported laser commands.
- *
- * Input:
- *    std::string  command - The command to send to the laser.
- *    std::string& answer  - contains the laser's reply.
- *
- * Returns:
- *    int - DEVICE_OK if successful,
- *          DEVICE_UNSUPPORTED_COMMAND if illegal or unsupported laser command
- *          The error code received from the Micro-Manager serial communication class.
- */
-int CoboltOfficial::SendSerialCmd( const std::string& command, std::string& answer )
-{
-    int reply = SendSerialCommand( port_.c_str(), command.c_str(), g_SendTerm );
-
-    if ( reply != DEVICE_OK ) {
-        
-        LogMessage( "CoboltOfficial::SendSerialCmd: SendSerialCommand Failed: " + std::to_string( (_Longlong) reply ), true );
-    
-    } else {
-
-        reply = GetSerialAnswer( port_.c_str(), g_RecvTerm, answer );
-        
-        if ( reply != DEVICE_OK ) {
-            
-            LogMessage( "CoboltOfficial::SendSerialCmd: GetSerialAnswer Failed: " + std::to_string( (_Longlong) reply ), true );
-        
-        } else if ( answer.find( "error" ) != std::string::npos ) { // TODO: make find case insensitive
-        
-            LogMessage( "CoboltOfficial::SendSerialCmd: Sent: " + command + " Reply received: " + answer, true );
-            reply = DEVICE_UNSUPPORTED_COMMAND;
-        }
-    }
-
-    return reply;
 }
 
 int CoboltOfficial::ExposeToGui( const Property* property )

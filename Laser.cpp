@@ -175,27 +175,25 @@ void Laser::Incarnate()
     // ###
     // Create supported properties:
     
-    CreatePropertyIfSupported( model,                       new BasicProperty<std::string>( symbol_strings[ model ], device_, "glm?" ) );
-    CreatePropertyIfSupported( wavelength,                  new StaticStringProperty( symbol_strings[ wavelength ], this->Wavelength ) );
-    CreatePropertyIfSupported( serial_number,               new BasicProperty<std::string>( symbol_strings[ serial_number ], device_, "gsn?" ) );
-    CreatePropertyIfSupported( firmware_version,            new BasicProperty<std::string>( symbol_strings[ firmware_version ], device_, "gfv?" ) );
-    CreatePropertyIfSupported( operating_hours,             new BasicProperty<std::string>( symbol_strings[ operating_hours ], device_, "hrs?" ) );
-
-    CreatePropertyIfSupported( current_setpoint,            new BasicMutableProperty<double>( symbol_strings[ current_setpoint ], device_, "glc?", "slc" ) );
-    CreatePropertyIfSupported( max_current_setpoint,        new BasicProperty<double>( symbol_strings[ max_current_setpoint ], device_, "gmlc?" ) );
-    CreatePropertyIfSupported( current_reading,             new BasicProperty<double>( symbol_strings[ current_reading ], device_, "i?" ) );
-    CreatePropertyIfSupported( power_setpoint,              new BasicMutableProperty<double>( symbol_strings[ power_setpoint ], device_, "p?", "slp" ) );
-    CreatePropertyIfSupported( max_power_setpoint,          new BasicProperty<double>( symbol_strings[ max_power_setpoint ], device_, "gmlp?" ) );
-
-    CreatePropertyIfSupported( power_reading,               new BasicProperty<double>( symbol_strings[ power_reading ], device_, "pa?" ) );
-    CreatePropertyIfSupported( toggle,                      new ToggleProperty( symbol_strings[ toggle ], device_, "l?", "l1", "l0" ) );
-    CreatePropertyIfSupported( paused,                      new LaserPausedProperty( symbol_strings[ paused ], device_ ) );
-    CreatePropertyIfSupported( run_mode_cc_cp_mod,          new BasicMutableProperty<run_mode::cc_cp_mod::symbol>( symbol_strings[ run_mode_cc_cp_mod ], device_, "gam?", "sam" ) );
-    CreatePropertyIfSupported( digital_modulation_flag,     new BasicMutableProperty<flag::symbol>( symbol_strings[ digital_modulation_flag ], device_, "gdmes?", "sdmes" ) );
-
-    CreatePropertyIfSupported( analog_modulation_flag,      new BasicMutableProperty<flag::symbol>( symbol_strings[ analog_modulation_flag ], device_, "games?", "sames" ) );
-    CreatePropertyIfSupported( modulation_power_setpoint,   new BasicMutableProperty<double>( symbol_strings[ modulation_power_setpoint ], device_, "glmp?", "slmp" ) );
-    CreatePropertyIfSupported( analog_impedance,            new BasicMutableProperty<analog_impedance::symbol>( symbol_strings[ analog_impedance ], device_, "galis?", "salis" ) );
+    RegisterProperty( model,            new BasicProperty<std::string>( symbol_strings[ model ], device_, "glm?" ) );
+    RegisterProperty( wavelength,       new StaticStringProperty( symbol_strings[ wavelength ], this->Wavelength ) );
+    RegisterProperty( serial_number,    new BasicProperty<std::string>( symbol_strings[ serial_number ], device_, "gsn?" ) );
+    RegisterProperty( firmware_version, new BasicProperty<std::string>( symbol_strings[ firmware_version ], device_, "gfv?" ) );
+    RegisterProperty( operating_hours,  new BasicProperty<std::string>( symbol_strings[ operating_hours ], device_, "hrs?" ) );
+    RegisterProperty( toggle,           new ToggleProperty( symbol_strings[ toggle ], device_, "l?", "l1", "l0" ) );
+    
+    RegisterPropertyIfSupported( current_setpoint,            new BasicMutableProperty<double>( symbol_strings[ current_setpoint ], device_, "glc?", "slc" ) );
+    RegisterPropertyIfSupported( max_current_setpoint,        new BasicProperty<double>( symbol_strings[ max_current_setpoint ], device_, "gmlc?" ) );
+    RegisterPropertyIfSupported( current_reading,             new BasicProperty<double>( symbol_strings[ current_reading ], device_, "i?" ) );
+    RegisterPropertyIfSupported( power_setpoint,              new BasicMutableProperty<double>( symbol_strings[ power_setpoint ], device_, "p?", "slp" ) );
+    RegisterPropertyIfSupported( max_power_setpoint,          new BasicProperty<double>( symbol_strings[ max_power_setpoint ], device_, "gmlp?" ) );
+    RegisterPropertyIfSupported( power_reading,               new BasicProperty<double>( symbol_strings[ power_reading ], device_, "pa?" ) );
+    RegisterPropertyIfSupported( paused,                      new LaserPausedProperty( symbol_strings[ paused ], device_ ) );
+    RegisterPropertyIfSupported( run_mode_cc_cp_mod,          new BasicMutableProperty<run_mode::cc_cp_mod::symbol>( symbol_strings[ run_mode_cc_cp_mod ], device_, "gam?", "sam" ) );
+    RegisterPropertyIfSupported( digital_modulation_flag,     new BasicMutableProperty<flag::symbol>( symbol_strings[ digital_modulation_flag ], device_, "gdmes?", "sdmes" ) );
+    RegisterPropertyIfSupported( analog_modulation_flag,      new BasicMutableProperty<flag::symbol>( symbol_strings[ analog_modulation_flag ], device_, "games?", "sames" ) );
+    RegisterPropertyIfSupported( modulation_power_setpoint,   new BasicMutableProperty<double>( symbol_strings[ modulation_power_setpoint ], device_, "glmp?", "slmp" ) );
+    RegisterPropertyIfSupported( analog_impedance,            new BasicMutableProperty<analog_impedance::symbol>( symbol_strings[ analog_impedance ], device_, "galis?", "salis" ) );
 
     // ###
     // Attach constraints to created properties:
@@ -208,13 +206,18 @@ void Laser::Incarnate()
     AttachConstraintIfPropertySupported( analog_impedance,          new EnumConstraint<flag::symbol>( laser::analog_impedance::symbol_strings ) );
 }
 
-void Laser::CreatePropertyIfSupported( const property::symbol propertySymbol, cobolt::Property* property )
+void Laser::RegisterProperty( const laser::property::symbol propertySymbol, cobolt::Property* property )
+{
+    properties_[ property::ToString( propertySymbol ) ] = property;
+}
+
+void Laser::RegisterPropertyIfSupported( const property::symbol propertySymbol, cobolt::Property* property )
 {
     if ( !SupportsProperty( propertySymbol ) ) {
         return;
     }
     
-    properties_[ property::ToString( propertySymbol ) ] = property;
+    RegisterProperty( propertySymbol, property );
 }
 
 void Laser::AttachConstraintIfPropertySupported( const property::symbol propertySymbol, cobolt::MutableProperty::Constraint* constraint )
