@@ -11,8 +11,6 @@
 
 #include <string>
 
-#include "../MMDevice/Property.h"
-
 #include "cobolt.h"
 #include "types.h"
 #include "LaserDevice.h"
@@ -39,8 +37,8 @@ class GuiEnvironment
 {
 public:
 
-    virtual int RegisterAllowedGuiPropertyValue( const char* propertyName, const char* value ) = 0;
-    virtual int RegisterAllowedGuiPropertyRange( double min, double max ) = 0;
+    virtual int RegisterAllowedGuiPropertyValue( const std::string& propertyName, std::string& value ) = 0;
+    virtual int RegisterAllowedGuiPropertyRange( const std::string& propertyName, double min, double max ) = 0;
 };
 
 class Property
@@ -84,9 +82,11 @@ public:
     }
 
     virtual int IntroduceToGuiEnvironment( GuiEnvironment* )
-    {}
+    {
+        return return_code::ok;
+    }
 
-    const std::string& Name() const
+    const std::string& GetName() const
     {
         return name_;
     }
@@ -98,21 +98,21 @@ public:
         return false;
     }
 
-    virtual int OnGuiSetAction( GuiProperty& guiProperty )
+    virtual int OnGuiSetAction( GuiProperty& )
     {
         Logger::Instance()->Log( "Ignoring 'set' action on read-only property.", true );
-        return DEVICE_OK;
+        return return_code::ok;
     }
 
     virtual int OnGuiGetAction( GuiProperty& guiProperty )
     {
         std::string string;
-        int result = FetchAsString( string );
+        int returnCode = FetchAsString( string );
 
-        if ( result != DEVICE_OK ) {
+        if ( returnCode != return_code::ok ) {
 
             SetToUnknownValue( guiProperty );
-            return result;
+            return returnCode;
         }
         
         guiProperty.Set( string.c_str() );
@@ -121,16 +121,16 @@ public:
             fetchValueModifier_->ApplyOn( guiProperty );
         }
         
-        return result;
+        return returnCode;
     }
 
     template <typename T> T Get() const;
     template <> double Get() const
     {
         std::string string;
-        const int result = FetchAsString( string );
+        const int returnCode = FetchAsString( string );
         
-        if ( result != DEVICE_OK ) {
+        if ( returnCode != return_code::ok ) {
             return 0.0f;
         }
         
@@ -140,9 +140,9 @@ public:
     template <> std::string Get() const
     {
         std::string string;
-        const int result = FetchAsString( string );
+        const int returnCode = FetchAsString( string );
 
-        if ( result != DEVICE_OK ) {
+        if ( returnCode != return_code::ok ) {
             SetToUnknownValue( string );
         }
         
@@ -169,7 +169,7 @@ protected:
     
 private:
 
-    const std::string name_;
+    std::string name_;
 
     FetchValueModifier* fetchValueModifier_;
 };
@@ -184,7 +184,7 @@ public:
     {
     public:
 
-        virtual void ExportToGuiEnvironment( GuiEnvironment* ) const = 0;
+        virtual int ExportToGuiEnvironment( const std::string& propertyName, GuiEnvironment* ) const = 0;
     };
 
     MutableProperty( const std::string& name ) :
@@ -201,7 +201,8 @@ public:
 
     virtual int IntroduceToGuiEnvironment( GuiEnvironment* environment )
     {
-        constraint_->ExportToGuiEnvironment( environment );
+        constraint_->ExportToGuiEnvironment( GetName(), environment );
+        return return_code::ok;
     }
 
     virtual bool MutableInGui() const
@@ -228,18 +229,18 @@ public:
         guiProperty.Get( value );
         
         if ( !FormatBeforeSetFromGui( value ) ) {
-            return DEVICE_INVALID_PROPERTY_VALUE;
+            return return_code::invalid_property_value;
         }
 
-        const int result = Set( value );
+        const int returnCode = Set( value );
 
-        if ( result != DEVICE_OK ) {
+        if ( returnCode != return_code::ok ) {
 
             SetToUnknownValue( guiProperty );
-            return result;
+            return returnCode;
         }
 
-        return DEVICE_OK;
+        return return_code::ok;
     }
 
     virtual int FormatBeforeSetFromGui( std::string& ) const = 0;
@@ -256,7 +257,7 @@ private:
     {
     public:
 
-        virtual void ExportToGuiEnvironment( GuiEnvironment* ) const {}
+        virtual int ExportToGuiEnvironment( const std::string&, GuiEnvironment* ) const { return return_code::ok; }
     };
 
     const Constraint* constraint_;
@@ -277,12 +278,12 @@ public:
     virtual int FetchAsString( std::string& string ) const
     {
         string = value_;
-        return DEVICE_OK;
+        return return_code::ok;
     }
 
 private:
 
-    const std::string value_;
+    std::string value_;
 };
 
 template <typename T>
@@ -298,16 +299,16 @@ public:
 
     virtual int FetchAsString( std::string& string ) const // Whatever is changed here should be replicated in BasicMutableProperty::FetchAsString( ... )
     {
-        const int result = laserDevice_->SendCommand( getCommand_, &string );
-        if ( result != DEVICE_OK ) { SetToUnknownValue( string ); return result; }
+        const int returnCode = laserDevice_->SendCommand( getCommand_, &string );
+        if ( returnCode != return_code::ok ) { SetToUnknownValue( string ); return returnCode; }
         CommandResponseValueStringToGuiValueString<T>( string );
-        return result;
+        return returnCode;
     }
     
 private:
 
-    const LaserDevice* laserDevice_;
-    const std::string getCommand_;
+    LaserDevice* laserDevice_;
+    std::string getCommand_;
 };
 
 template <typename T>
@@ -317,16 +318,17 @@ public:
 
     BasicMutableProperty( const std::string& name, LaserDevice* laserDevice, const std::string& getCommand, const std::string& setCommand ) :
         MutableProperty( name ),
+        laserDevice_( laserDevice ),
         getCommand_( getCommand ),
         setCommand_( setCommand )
     {}
 
     virtual int FetchAsString( std::string& string ) const // Whatever is changed here should be replicated in BasicProperty::FetchAsString( ... )
     {
-        const int result = laserDevice_->SendCommand( getCommand_, &string );
-        if ( result != DEVICE_OK ) { SetToUnknownValue( string ); return result; }
+        const int returnCode = laserDevice_->SendCommand( getCommand_, &string );
+        if ( returnCode != return_code::ok ) { SetToUnknownValue( string ); return returnCode; }
         CommandResponseValueStringToGuiValueString<T>( string );
-        return result;
+        return returnCode;
     }
 
     virtual int FormatBeforeSetFromGui( std::string& string ) const
@@ -342,12 +344,12 @@ public:
 
 protected:
 
-    const LaserDevice* laserDevice_;
+    LaserDevice* laserDevice_;
 
 private:
 
-    const std::string getCommand_;
-    const std::string setCommand_;
+    std::string getCommand_;
+    std::string setCommand_;
 };
 
 class ToggleProperty : public BasicMutableProperty<laser::toggle::symbol>
@@ -365,7 +367,7 @@ public:
         laser::toggle::symbol toggleSymbol = laser::toggle::FromString( value );
 
         if ( toggleSymbol == laser::toggle::__undefined__ ) {
-            return DEVICE_INVALID_PROPERTY_VALUE;
+            return return_code::invalid_property_value;
         }
         
         switch ( toggleSymbol ) {
@@ -374,13 +376,13 @@ public:
             case laser::toggle::off: return laserDevice_->SendCommand( offCommand_ );
         }
         
-        return DEVICE_ERR;
+        return return_code::error;
     }
 
 private:
 
-    const std::string& onCommand_;
-    const std::string& offCommand_;
+    std::string onCommand_;
+    std::string offCommand_;
 };
 
 class LaserPausedProperty : public ToggleProperty
@@ -397,14 +399,18 @@ public:
     virtual int FetchAsString( std::string& string ) const
     {
         string = toggle_;
-        return DEVICE_OK;
+        return return_code::ok;
     }
 
     virtual int Set( const std::string& value )
     {
-        if ( Parent::Set( value ) == DEVICE_OK ) {
+        const int returnCode = Parent::Set( value );
+
+        if ( returnCode == return_code::ok ) {
             toggle_ = value;
         }
+        
+        return returnCode;
     }
     
 private:
@@ -417,34 +423,41 @@ class EnumConstraint : public MutableProperty::Constraint
 {
 public:
 
-    EnumConstraint( std::string validValues[] ) :
-        validValues_( validValues )
+    EnumConstraint( std::string* validValues, const int count ) :
+        validValues_( validValues ),
+        count_( count )
     {}
 
-    virtual void ExportToGuiEnvironment( GuiEnvironment* environment ) const
+    virtual int ExportToGuiEnvironment( const std::string& propertyName, GuiEnvironment* environment ) const
     {
-        for ( int i = 0; i < _EnumType::__count__; i++ ) {
-            environment->RegisterAllowedGuiPropertyValue( validValues[ i ] );
+        for ( int i = 0; i < count_; i++ ) {
+            const int returnCode = environment->RegisterAllowedGuiPropertyValue( propertyName, validValues_[ i ] );
+            if ( returnCode != return_code::ok ) {
+                return returnCode;
+            }
         }
+        
+        return return_code::ok;
     }
 
 private:
 
-    std::string validValues_[];
+    std::string* validValues_;
+    int count_;
 };
 
 class RangeConstraint : public MutableProperty::Constraint
 {
 public:
 
-    RangeConstraint( const double min, const double max ) :
+    RangeConstraint( double min, const double max ) :
         min_( min ),
         max_( max )
     {}
     
-    virtual void ExportToGuiEnvironment( GuiEnvironment* environment ) const
+    virtual int ExportToGuiEnvironment( const std::string& propertyName, GuiEnvironment* environment ) const
     {
-        environment->RegisterAllowedGuiPropertyRange( min_, max_ );
+        return environment->RegisterAllowedGuiPropertyRange( propertyName, min_, max_ );
     }
 
 private:

@@ -16,10 +16,6 @@
 
 #include "cobolt.h"
 
-#include "Current.h"
-#include "Power.h"
-#include "Voltage.h"
-
 NAMESPACE_COBOLT_BEGIN
 
 namespace laser
@@ -109,12 +105,12 @@ template <> bool CommandResponseValueStringToGuiValueString<laser::run_mode::cc_
 template <typename T>
 bool GuiValueStringToCommandArgumentString( std::string& string );
 
-template <> bool GuiValueStringToCommandArgumentString<std::string>( std::string& string )
+template <> bool GuiValueStringToCommandArgumentString<std::string>( std::string& )
 {
     return true;
 }
 
-template <> bool GuiValueStringToCommandArgumentString<double>( std::string& string )
+template <> bool GuiValueStringToCommandArgumentString<double>( std::string& )
 {
     return true;
 }

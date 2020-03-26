@@ -12,10 +12,9 @@
 #include <string>
 #include <set>
 #include <map>
+#include <vector>
 
 #include "cobolt.h"
-#include "Power.h"
-#include "Current.h"
 #include "Logger.h"
 #include "LaserDevice.h"
 #include "Property.h"
@@ -62,7 +61,7 @@ public:
 
     virtual ~Laser();
 
-    const std::string& Wavelength() const;
+    const std::string& GetWavelength() const;
 
     void SetupWithLaserDevice( LaserDevice* );
 
@@ -102,7 +101,7 @@ private:
 
     std::map<std::string, cobolt::Property*> properties_;
     
-    const std::string modelName_;
+    std::string modelName_;
     std::string wavelength_;
     LaserDevice* device_;
 };
@@ -113,7 +112,7 @@ public:
 
     Laser_06DPL() : Laser( "06 DPL" ) {}
     
-    virtual bool SupportsModelSpecificProperty( laser::property::symbol symbol ) const
+    virtual bool SupportsModelSpecificProperty( const laser::property::symbol symbol ) const
     {
         switch ( symbol ) {
 
@@ -151,7 +150,7 @@ public:
 
     Laser_Unknown() : Laser( "Unknown" ) {}
 
-    virtual bool SupportsModelSpecificProperty( laser::property::symbol symbol ) const
+    virtual bool SupportsModelSpecificProperty( const laser::property::symbol ) const
     {
         return false;
     }

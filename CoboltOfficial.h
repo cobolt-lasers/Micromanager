@@ -17,10 +17,6 @@
 #include "Logger.h"
 #include "LaserDevice.h"
 
-#define ERR_PORT_CHANGE_FORBIDDEN                101001
-#define ERR_SERIAL_PORT_NOT_SELECTED             101002
-#define OPERATING_SHUTTER_WITH_LASER_OFF         101003
-
 class CoboltOfficial : 
     public CShutterBase<CoboltOfficial>, 
     public cobolt::LaserDevice, 
@@ -58,6 +54,17 @@ public:
     virtual int SendCommand( const std::string& command, std::string* response = NULL );
 
     /// ###
+    /// LoggerGateway API
+
+    virtual void SendLogMessage( const char* message, bool debug ) const;
+
+    /// ###
+    /// GuiEnvironment API
+
+    virtual int RegisterAllowedGuiPropertyValue( const std::string& propertyName, std::string& value );
+    virtual int RegisterAllowedGuiPropertyRange( const std::string& propertyName, double min, double max );
+
+    /// ###
     /// Property Action Handlers
 
     int OnPropertyAction_Port( MM::PropertyBase*, MM::ActionType );
@@ -70,9 +77,8 @@ private:
     
     cobolt::Laser* laser_;
 
-    bool bInitialized_;
+    bool isInitialized_;
     std::string port_;
-    bool bBusy_;
 };
 
 #endif // #ifndef __COBOLT_OFFICIAL_H

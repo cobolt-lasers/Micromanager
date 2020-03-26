@@ -30,12 +30,30 @@
 #define CSTRING_VALUE_GENERATOR2( _, s ) STRINGIFY( s ),
 #define QUOTED_CSTRING_VALUE_GENERATOR( _1, _2, s ) s,
 
-// TODO: rename 'symbol' to 'value'?
-#define GENERATE_ENUM_STRING_MAP( FOREACH )                                                                                                                             \
-    enum symbol { FOREACH( ENUM_VALUE_PAIR_GENERATOR3 ) __count__, __undefined__ };                                                                                     \
-    static std::string symbol_strings[] = { FOREACH( QUOTED_CSTRING_VALUE_GENERATOR ) "", "" };                                                                         \
-    symbol FromString( const std::string& s ) { for ( int i = 0; i < __count__; i++ ) if ( s == symbol_strings[ i ] ) return (symbol) i; return symbol::__undefined__; }  \
+#define GENERATE_ENUM_STRING_MAP( FOREACH )                                                                                                                               \
+    enum symbol { FOREACH( ENUM_VALUE_PAIR_GENERATOR3 ) __count__, __undefined__ };                                                                                       \
+    static std::string symbol_strings[] = { FOREACH( QUOTED_CSTRING_VALUE_GENERATOR ) "", "" };                                                                           \
+    symbol FromString( const std::string& s ) { for ( int i = 0; i < __count__; i++ ) if ( s == symbol_strings[ i ] ) return (symbol) i; return __undefined__; }  \
     std::string ToString( symbol t ) { if ( t < __count__ && t >= 0 ) return symbol_strings[ (int) t ]; return ""; }
+
+NAMESPACE_COBOLT_BEGIN
+
+#define ERR_PORT_CHANGE_FORBIDDEN                101001 // cobolt::return_code::port_change_forbidden
+#define ERR_SERIAL_PORT_NOT_SELECTED             101002 // cobolt::return_code::no_port_selected
+#define OPERATING_SHUTTER_WITH_LASER_OFF         101003 // cobolt::return_code::operating_shutter_when_laser_off
+
+namespace return_code
+{
+    const int ok = 0;
+    const int error = 1;
+    const int invalid_property_value = 3;
+    const int unsupported_command = 11;
+    const int illegal_port_change = 101001;
+    const int serial_port_undefined = 101002;
+    const int laser_off = 101003;
+}
+
+NAMESPACE_COBOLT_END
 
 #include "Logger.h"
 

@@ -136,25 +136,17 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="CoboltOfficial.cpp" />
-    <ClCompile Include="Current.cpp" />
     <ClCompile Include="Laser.cpp" />
-    <ClCompile Include="Power.cpp" />
-    <ClCompile Include="PrefixedValue.cpp" />
     <ClCompile Include="Property.cpp" />
-    <ClCompile Include="Voltage.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cobolt.h" />
     <ClInclude Include="CoboltOfficial.h" />
-    <ClInclude Include="Current.h" />
     <ClInclude Include="Laser.h" />
     <ClInclude Include="LaserDevice.h" />
     <ClInclude Include="Logger.h" />
-    <ClInclude Include="Power.h" />
-    <ClInclude Include="PrefixedValue.h" />
     <ClInclude Include="Property.h" />
     <ClInclude Include="types.h" />
-    <ClInclude Include="Voltage.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\MMDevice\MMDevice-SharedRuntime.vcxproj">

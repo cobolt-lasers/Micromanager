@@ -42,7 +42,7 @@ Laser::~Laser()
     properties_.clear();
 }
 
-const std::string& Laser::Wavelength() const
+const std::string& Laser::GetWavelength() const
 {
     return wavelength_;
 }
@@ -86,7 +86,7 @@ bool Laser::IsPaused() const
 
 Property* Laser::GetProperty( const std::string& name ) const
 {
-    return properties_[ name ];
+    return properties_.at( name );
 }
 
 Property* Laser::GetProperty( const std::string& name )
@@ -96,7 +96,7 @@ Property* Laser::GetProperty( const std::string& name )
 
 Property* Laser::GetProperty( const laser::property::symbol propertySymbol ) const
 {
-    return properties_[ laser::property::ToString( propertySymbol ) ];
+    return properties_.at( laser::property::ToString( propertySymbol ) );
 }
 
 Property* Laser::GetProperty( const laser::property::symbol propertySymbol )
@@ -176,7 +176,7 @@ void Laser::Incarnate()
     // Create supported properties:
     
     RegisterProperty( model,            new BasicProperty<std::string>( symbol_strings[ model ], device_, "glm?" ) );
-    RegisterProperty( wavelength,       new StaticStringProperty( symbol_strings[ wavelength ], this->Wavelength ) );
+    RegisterProperty( wavelength,       new StaticStringProperty( symbol_strings[ wavelength ], this->GetWavelength() ) );
     RegisterProperty( serial_number,    new BasicProperty<std::string>( symbol_strings[ serial_number ], device_, "gsn?" ) );
     RegisterProperty( firmware_version, new BasicProperty<std::string>( symbol_strings[ firmware_version ], device_, "gfv?" ) );
     RegisterProperty( operating_hours,  new BasicProperty<std::string>( symbol_strings[ operating_hours ], device_, "hrs?" ) );
@@ -200,10 +200,10 @@ void Laser::Incarnate()
     
     AttachConstraintIfPropertySupported( current_setpoint,          new RangeConstraint( 0.0f, GetProperty( max_current_setpoint )->Get<double>() ) );
     AttachConstraintIfPropertySupported( power_setpoint,            new RangeConstraint( 0.0f, GetProperty( max_power_setpoint )->Get<double>() ) );
-    AttachConstraintIfPropertySupported( run_mode_cc_cp_mod,        new EnumConstraint<run_mode::cc_cp_mod::symbol>( laser::run_mode::cc_cp_mod::symbol_strings ) );
-    AttachConstraintIfPropertySupported( digital_modulation_flag,   new EnumConstraint<flag::symbol>( laser::flag::symbol_strings ) );
-    AttachConstraintIfPropertySupported( analog_modulation_flag,    new EnumConstraint<flag::symbol>( laser::flag::symbol_strings ) );
-    AttachConstraintIfPropertySupported( analog_impedance,          new EnumConstraint<flag::symbol>( laser::analog_impedance::symbol_strings ) );
+    AttachConstraintIfPropertySupported( run_mode_cc_cp_mod,        new EnumConstraint<run_mode::cc_cp_mod::symbol>( laser::run_mode::cc_cp_mod::symbol_strings, laser::run_mode::cc_cp_mod::__count__ ) );
+    AttachConstraintIfPropertySupported( digital_modulation_flag,   new EnumConstraint<flag::symbol>( laser::flag::symbol_strings, laser::flag::__count__ ) );
+    AttachConstraintIfPropertySupported( analog_modulation_flag,    new EnumConstraint<flag::symbol>( laser::flag::symbol_strings, laser::flag::__count__ ) );
+    AttachConstraintIfPropertySupported( analog_impedance,          new EnumConstraint<flag::symbol>( laser::analog_impedance::symbol_strings, laser::analog_impedance::__count__ ) );
 }
 
 void Laser::RegisterProperty( const laser::property::symbol propertySymbol, cobolt::Property* property )
