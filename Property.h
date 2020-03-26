@@ -19,10 +19,22 @@
 
 NAMESPACE_COBOLT_BEGIN
 
-typedef MM::PropertyBase GuiProperty;
-typedef MM::PropertyType GuiType;
-typedef MM::ActionType GuiAction;
+/**
+ * \brief The interface  the property hierarchy sees when receiving GUI events
+ *        about property get/set.
+ */
+class GuiProperty
+{
+public:
 
+    virtual bool Set( const std::string& ) = 0;
+    virtual bool Get( std::string& ) const = 0;
+};
+
+/**
+ * \brief A GUI environment interface to provide functionality to properly setup a cobolt::Property's
+ *        corresponding GUI property.
+ */
 class GuiEnvironment
 {
 public:
@@ -35,11 +47,13 @@ class Property
 {
 public:
 
+    enum Stereotype { String, Float, Integer };
+    
     class FetchValueModifier
     {
     public:
 
-        virtual void ApplyOn( GuiProperty* guiProperty ) = 0;
+        virtual void ApplyOn( GuiProperty& guiProperty ) = 0;
     };
 
     Property( const std::string& name ) :
@@ -72,19 +86,25 @@ public:
     virtual int IntroduceToGuiEnvironment( GuiEnvironment* )
     {}
 
-    const char* Name() const
+    const std::string& Name() const
     {
         return name_;
     }
 
-    GuiType TypeInGui() const;
+    Stereotype GetStereotype() const;
 
     virtual bool MutableInGui() const
     {
         return false;
     }
 
-    virtual int OnGuiAction( GuiProperty* guiProperty, const GuiAction action )
+    virtual int OnGuiSetAction( GuiProperty& guiProperty )
+    {
+        Logger::Instance()->Log( "Ignoring 'set' action on read-only property.", true );
+        return DEVICE_OK;
+    }
+
+    virtual int OnGuiGetAction( GuiProperty& guiProperty )
     {
         std::string string;
         int result = FetchAsString( string );
@@ -95,7 +115,7 @@ public:
             return result;
         }
         
-        guiProperty->Set( string.c_str() );
+        guiProperty.Set( string.c_str() );
 
         if ( fetchValueModifier_ != NULL ) {
             fetchValueModifier_->ApplyOn( guiProperty );
@@ -137,19 +157,19 @@ protected:
     {
         string = "Unknown";
     }
-
-    void SetToUnknownValue( GuiProperty* guiProperty ) const
+    
+    void SetToUnknownValue( GuiProperty& guiProperty ) const
     {
-        switch ( TypeInGui() ) {
-            case GuiType::Float:   guiProperty->Set( 0.0f );
-            case GuiType::Integer: guiProperty->Set( 0L );
-            case GuiType::String:  guiProperty->Set( "Unknown" );
+        switch ( GetStereotype() ) {
+            case Float:   guiProperty.Set( "0" ); break;
+            case Integer: guiProperty.Set( "0" ); break;
+            case String:  guiProperty.Set( "Unknown" ); break;
         }
     }
-
+    
 private:
 
-    const char* const name_;
+    const std::string name_;
 
     FetchValueModifier* fetchValueModifier_;
 };
@@ -201,13 +221,13 @@ public:
         constraint_ = constraint;
     }
 
-    virtual int SetFrom( GuiProperty* guiProperty )
+    int SetFrom( GuiProperty& guiProperty )
     {
         std::string value;
 
-        guiProperty->Get( value );
-
-        if ( !GuiValueStringToCommandArgumentString<T>( value ) ) {
+        guiProperty.Get( value );
+        
+        if ( !FormatBeforeSetFromGui( value ) ) {
             return DEVICE_INVALID_PROPERTY_VALUE;
         }
 
@@ -222,18 +242,12 @@ public:
         return DEVICE_OK;
     }
 
-    virtual int Set( const std::string& value ) = 0;
-
-    virtual int OnGuiAction( GuiProperty* guiProperty, const GuiAction action )
+    virtual int FormatBeforeSetFromGui( std::string& ) const = 0;
+    virtual int Set( const std::string& ) = 0;
+    
+    virtual int OnGuiSetAction( GuiProperty& guiProperty )
     {
-        if ( action == GuiAction::BeforeGet ) {
-
-            return Parent::OnGuiAction( guiProperty, action );
-
-        } else if ( action == GuiAction::AfterSet ) {
-
-            return SetFrom( guiProperty );
-        }
+        return SetFrom( guiProperty );
     }
 
 private:
@@ -313,6 +327,11 @@ public:
         if ( result != DEVICE_OK ) { SetToUnknownValue( string ); return result; }
         CommandResponseValueStringToGuiValueString<T>( string );
         return result;
+    }
+
+    virtual int FormatBeforeSetFromGui( std::string& string ) const
+    {
+        return GuiValueStringToCommandArgumentString<T>( string );
     }
 
     virtual int Set( const std::string& value )

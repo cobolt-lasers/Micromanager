@@ -52,6 +52,19 @@ MODULE_API void DeleteDevice( MM::Device* pDevice )
     delete pDevice;
 }
 
+class GuiPropertyAdapter : public cobolt::GuiProperty
+{
+public:
+
+    GuiPropertyAdapter( MM::PropertyBase* mm_property ) : mm_property_( mm_property ) {}
+    virtual bool Set( const std::string& value ) { return mm_property_->Set( value.c_str() ); }
+    virtual bool Get( std::string& value ) const { return mm_property_->Get( value ); }
+    
+private:
+
+    MM::PropertyBase* mm_property_;
+};
+
 CoboltOfficial::CoboltOfficial() :
     laser_( NULL ),
     bInitialized_( false ),
@@ -68,10 +81,7 @@ CoboltOfficial::CoboltOfficial() :
     // Map error codes to strings:
     SetErrorText( ERR_PORT_CHANGE_FORBIDDEN,                "You can't change the port after device has been initialized."          );
     SetErrorText( ERR_SERIAL_PORT_NOT_SELECTED,             "Serial port must not be undefined when initializing!"                  );
-    SetErrorText( ERR_UNKNOWN_COBOLT_LASER_MODEL,           "Cobolt Laser Model is not yet supported!"                              );
     SetErrorText( OPERATING_SHUTTER_WITH_LASER_OFF,         "Cannot operate shutter while the Laser is turned off!"                 );
-    SetErrorText( ERR_LASER_OPERATING_MODE_NOT_SUPPORTED,   "Laser Operating Mode not yet implemented or not supported!"            );
-    SetErrorText( ERR_CANNOT_SET_MODE_OFF,                  "Cannot set Operating mode Off! Use Laser Status to turn On and Off!"   );
 
     // Create properties:
     CreateProperty( MM::g_Keyword_Name,         g_DeviceName,               MM::String, true );
@@ -117,8 +127,6 @@ int CoboltOfficial::Initialize()
 int CoboltOfficial::Shutdown()
 {
     if ( bInitialized_ == true ) {
-        /* TODO: Should the laser be turned off first? */
-        setupWhenClosingShutter.backupIsActive = false;
         bInitialized_ = false;
     }
 
@@ -169,8 +177,8 @@ int CoboltOfficial::Fire( double deltaT )
     int reply = SetOpen( true );
 
     if ( reply == DEVICE_OK ) {
-        CDeviceUtils::SleepMs( (long) ( deltaT + 0.5f ) );
 
+        CDeviceUtils::SleepMs( (long) ( deltaT + 0.5f ) );
         reply = SetOpen( false );
     }
 
@@ -209,9 +217,9 @@ int CoboltOfficial::SendCommand( const std::string& command, std::string* respon
 
             LogMessage( "CoboltOfficial::SendSerialCmd: GetSerialAnswer Failed: " + std::to_string( (_Longlong) reply ), true );
 
-        } else if ( response.find( "error" ) != std::string::npos ) { // TODO: make find case insensitive
+        } else if ( response->find( "error" ) != std::string::npos ) { // TODO: make find case insensitive
 
-            LogMessage( "CoboltOfficial::SendSerialCmd: Sent: " + command + " Reply received: " + answer, true );
+            LogMessage( "CoboltOfficial::SendSerialCmd: Sent: " + command + " Reply received: " + response, true );
             reply = DEVICE_UNSUPPORTED_COMMAND;
         }
     }
@@ -241,13 +249,32 @@ int CoboltOfficial::OnPropertyAction_Port( MM::PropertyBase* guiProperty, MM::Ac
     return DEVICE_OK;
 }
 
-int CoboltOfficial::OnPropertyAction_Laser( MM::PropertyBase* guiProperty, MM::ActionType action )
+int CoboltOfficial::OnPropertyAction_Laser( MM::PropertyBase* mm_property, MM::ActionType action )
 {
-    laser_->GetProperty( guiProperty->GetName() )->OnGuiAction( guiProperty, action );
+    if ( action == MM::BeforeGet ) {
+        laser_->GetProperty( mm_property->GetName() )->OnGuiGetAction( GuiPropertyAdapter( mm_property ) );
+    } else if ( action == MM::AfterSet ) {
+        laser_->GetProperty( mm_property->GetName() )->OnGuiSetAction( GuiPropertyAdapter( mm_property ) );
+    }
+}
+
+MM::PropertyType CoboltOfficial::ResolvePropertyType( const cobolt::Property::Stereotype stereotype ) const
+{
+    switch ( stereotype ) {
+
+        case Property::Float:   return MM::PropertyType::Float;
+        case Property::Integer: return MM::PropertyType::Integer;
+        case Property::String:  return MM::PropertyType::String;
+    }
 }
 
 int CoboltOfficial::ExposeToGui( const Property* property )
 {
     CPropertyAction* action = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_Laser );
-    return CreateProperty( property->Name(), property->Get<std::string>().c_str(), property->TypeInGui(), !property->MutableInGui(), action );
+    return CreateProperty(
+        property->Name().c_str(),
+        property->Get<std::string>().c_str(),
+        ResolvePropertyType( property->GetStereotype() ),
+        !property->MutableInGui(),
+        action );
 }
