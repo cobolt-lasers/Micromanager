@@ -57,7 +57,7 @@ public:
 
     typedef std::map<std::string, cobolt::Property*>::iterator PropertyIterator;
 
-    Laser* Create( const std::string& modelString );
+    static Laser* Create( const std::string& modelString );
 
     virtual ~Laser();
 

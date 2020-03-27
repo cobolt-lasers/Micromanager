@@ -22,6 +22,9 @@
     <ClInclude Include="testsuites\Laser_TestSuite.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\Laser.cpp" />
+    <ClCompile Include="..\Property.cpp" />
+    <ClCompile Include="..\types.cpp" />
     <ClCompile Include="~runner.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
@@ -47,7 +50,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>Windows7.1SDK</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
@@ -76,8 +79,8 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>C:\repos\Micromanager\DeviceAdapters\CoboltOfficial\test\cxxtest;$(IncludePath)</IncludePath>
-    <OutDir>$(ProjectDir)exe</OutDir>
+    <IncludePath>C:\repos\Micromanager\DeviceAdapters\CoboltOfficial;C:\repos\Micromanager\DeviceAdapters\CoboltOfficial\test\cxxtest;$(IncludePath)</IncludePath>
+    <OutDir>$(ProjectDir)exe\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>

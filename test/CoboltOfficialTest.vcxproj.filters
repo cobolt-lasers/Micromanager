@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Source Files\CoboltOfficial Source">
+      <UniqueIdentifier>{68fafc89-2440-4028-bd3e-7854d0fdba78}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="testsuites\Laser_TestSuite.h">
@@ -22,6 +25,15 @@
   <ItemGroup>
     <ClCompile Include="~runner.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Property.cpp">
+      <Filter>Source Files\CoboltOfficial Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\types.cpp">
+      <Filter>Source Files\CoboltOfficial Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Laser.cpp">
+      <Filter>Source Files\CoboltOfficial Source</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
