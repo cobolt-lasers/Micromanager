@@ -237,10 +237,6 @@ public:
 
         guiProperty.Get( value );
         
-        //if ( !FormatBeforeSetFromGui( value ) ) {
-        //    return return_code::invalid_property_value;
-        //}
-
         const int returnCode = Set( value );
 
         if ( returnCode != return_code::ok ) {
@@ -252,7 +248,6 @@ public:
         return return_code::ok;
     }
 
-    virtual int FormatBeforeSetFromGui( std::string& ) const = 0;
     virtual int Set( const std::string& ) = 0;
     
     virtual int OnGuiSetAction( GuiProperty& guiProperty )
@@ -355,14 +350,15 @@ public:
         return returnCode;
     }
 
-    virtual int FormatBeforeSetFromGui( std::string& string ) const
-    {
-        return GuiValueStringToCommandArgumentString<T>( string );
-    }
-
     virtual int Set( const std::string& value )
     {
-        std::string preparedSetCommand = setCommand_ + " " + value;
+        std::string argValue = value;
+        
+        if ( !GuiValueStringToCommandArgumentString<T>( argValue ) ) {
+            return return_code::invalid_property_value;
+        }
+        
+        std::string preparedSetCommand = setCommand_ + " " + argValue;
         return laserDevice_->SendCommand( preparedSetCommand );
     }
 
