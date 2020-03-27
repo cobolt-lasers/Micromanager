@@ -1,1 +1,5 @@
 /CoboltOfficial.vcxproj.user
+test/~runner.cpp
+*.user
+test/x64/
+test/exe/
