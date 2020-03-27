@@ -3,3 +3,4 @@ test/~runner.cpp
 *.user
 test/x64/
 test/exe/
+test/~test/

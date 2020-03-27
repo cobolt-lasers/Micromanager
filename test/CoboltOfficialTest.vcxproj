@@ -80,7 +80,8 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <IncludePath>C:\repos\Micromanager\DeviceAdapters\CoboltOfficial;C:\repos\Micromanager\DeviceAdapters\CoboltOfficial\test\cxxtest;$(IncludePath)</IncludePath>
-    <OutDir>$(ProjectDir)exe\</OutDir>
+    <OutDir>~test\Build\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>~test\Intermediate\$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -88,6 +89,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <PreBuildEvent>
       <Command>py scripts/generate_unit_test_runner.py</Command>
@@ -97,6 +99,7 @@
     </PreBuildEvent>
     <Link>
       <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
