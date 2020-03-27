@@ -44,7 +44,7 @@ public:
 
 private:
 
-    Logger();
+    Logger() {}
 
     const Gateway* gateway_;
 };

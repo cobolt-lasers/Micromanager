@@ -91,9 +91,9 @@ public:
         return name_;
     }
 
-    Stereotype GetStereotype() const;
+    virtual Stereotype GetStereotype() const = 0;
 
-    virtual bool MutableInGui() const
+    virtual bool IsMutable() const
     {
         return false;
     }
@@ -167,6 +167,15 @@ protected:
         }
     }
     
+    template <typename T> Stereotype ResolveStereotype() const                              { return String;  } // Default
+    template <> Stereotype ResolveStereotype<std::string>() const                           { return String;  }
+    template <> Stereotype ResolveStereotype<type::analog_impedance::symbol>() const       { return String;  }
+    template <> Stereotype ResolveStereotype<type::flag::symbol>() const                   { return String;  }
+    template <> Stereotype ResolveStereotype<type::run_mode::cc_cp_mod::symbol>() const    { return String;  }
+    template <> Stereotype ResolveStereotype<type::toggle::symbol>() const                 { return String;  }
+    template <> Stereotype ResolveStereotype<double>() const                                { return Float;   }
+    template <> Stereotype ResolveStereotype<int>() const                                   { return Integer; }
+
 private:
 
     std::string name_;
@@ -205,7 +214,7 @@ public:
         return return_code::ok;
     }
 
-    virtual bool MutableInGui() const
+    virtual bool IsMutable() const
     {
         return true;
     }
@@ -275,6 +284,11 @@ public:
         value_( value )
     {}
     
+    virtual Stereotype GetStereotype() const
+    {
+        return String;
+    }
+
     virtual int FetchAsString( std::string& string ) const
     {
         string = value_;
@@ -297,11 +311,16 @@ public:
         getCommand_( getCommand )
     {}
 
+    virtual Stereotype GetStereotype() const
+    {
+        return ResolveStereotype<T>();
+    }
+
     virtual int FetchAsString( std::string& string ) const // Whatever is changed here should be replicated in BasicMutableProperty::FetchAsString( ... )
     {
-        const int returnCode = laserDevice_->SendCommand( getCommand_, &string );
+        int returnCode = laserDevice_->SendCommand( getCommand_, &string );
         if ( returnCode != return_code::ok ) { SetToUnknownValue( string ); return returnCode; }
-        CommandResponseValueStringToGuiValueString<T>( string );
+        if ( !CommandResponseValueStringToGuiValueString<T>( string ) ) { returnCode = return_code::error; }
         return returnCode;
     }
     
@@ -323,11 +342,16 @@ public:
         setCommand_( setCommand )
     {}
 
+    virtual Stereotype GetStereotype() const
+    {
+        return ResolveStereotype<T>();
+    }
+
     virtual int FetchAsString( std::string& string ) const // Whatever is changed here should be replicated in BasicProperty::FetchAsString( ... )
     {
-        const int returnCode = laserDevice_->SendCommand( getCommand_, &string );
+        int returnCode = laserDevice_->SendCommand( getCommand_, &string );
         if ( returnCode != return_code::ok ) { SetToUnknownValue( string ); return returnCode; }
-        CommandResponseValueStringToGuiValueString<T>( string );
+        if ( !CommandResponseValueStringToGuiValueString<T>( string ) ) { returnCode = return_code::error; }
         return returnCode;
     }
 
@@ -352,28 +376,28 @@ private:
     std::string setCommand_;
 };
 
-class ToggleProperty : public BasicMutableProperty<laser::toggle::symbol>
+class ToggleProperty : public BasicMutableProperty<type::toggle::symbol>
 {
 public:
 
     ToggleProperty( const std::string& name, LaserDevice* laserDevice, const std::string& getCommand, const std::string& onCommand, const std::string& offCommand ) :
-        BasicMutableProperty<laser::toggle::symbol>( name, laserDevice, getCommand, "N/A" ),
+        BasicMutableProperty<type::toggle::symbol>( name, laserDevice, getCommand, "N/A" ),
         onCommand_( onCommand ),
         offCommand_( offCommand )
     {}
 
     virtual int Set( const std::string& value )
     {
-        laser::toggle::symbol toggleSymbol = laser::toggle::FromString( value );
+        type::toggle::symbol toggleSymbol = type::toggle::FromString( value );
 
-        if ( toggleSymbol == laser::toggle::__undefined__ ) {
+        if ( toggleSymbol == type::toggle::__undefined__ ) {
             return return_code::invalid_property_value;
         }
         
         switch ( toggleSymbol ) {
 
-            case laser::toggle::on:  return laserDevice_->SendCommand( onCommand_ );
-            case laser::toggle::off: return laserDevice_->SendCommand( offCommand_ );
+            case type::toggle::on:  return laserDevice_->SendCommand( onCommand_ );
+            case type::toggle::off: return laserDevice_->SendCommand( offCommand_ );
         }
         
         return return_code::error;
@@ -393,7 +417,7 @@ public:
 
     LaserPausedProperty( const std::string& name, LaserDevice* laserDevice ) :
         ToggleProperty( name, laserDevice, "N/A", "l1r", "l0r" ),
-        toggle_( laser::toggle::ToString( laser::toggle::off ) )
+        toggle_( type::toggle::ToString( type::toggle::off ) )
     {}
     
     virtual int FetchAsString( std::string& string ) const

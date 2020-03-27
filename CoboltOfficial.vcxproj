@@ -138,6 +138,7 @@
     <ClCompile Include="CoboltOfficial.cpp" />
     <ClCompile Include="Laser.cpp" />
     <ClCompile Include="Property.cpp" />
+    <ClCompile Include="types.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cobolt.h" />

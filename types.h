@@ -2,7 +2,7 @@
  * \file        types.h
  *
  * \brief       Brings together all custom types needed by the Cobolt adapter
- *              as well as their ToString/FromString converter functions.
+ *              as well as their various conversion functions.
  *
  * \authors     Lukas Kalinski
  *
@@ -18,7 +18,7 @@
 
 NAMESPACE_COBOLT_BEGIN
 
-namespace laser
+namespace type
 {
      #define FOREACH_ANALOG_IMPEDANCE_VALUE( GENERATOR ) \
         GENERATOR( high,    0,  "1 kOhm" ) \
@@ -58,43 +58,13 @@ namespace laser
  *          saying '1' would be translated into, for example, "Constant Power".
  */
 template <typename T>
-bool CommandResponseValueStringToGuiValueString( std::string& string );
+bool CommandResponseValueStringToGuiValueString( std::string& ) { return false; }
 
-const char* g_GuiPropertyValue_InvalidResponse = "Invalid Value";
-
-template <> bool CommandResponseValueStringToGuiValueString<std::string>( std::string& )
-{
-    return true;
-}
-
-template <> bool CommandResponseValueStringToGuiValueString<double>( std::string& )
-{
-    return true;
-}
-
-template <> bool CommandResponseValueStringToGuiValueString<laser::analog_impedance::symbol>( std::string& string )
-{
-    const int value = atoi( string.c_str() );
-    if ( value != 0 && value != 1 ) { string = g_GuiPropertyValue_InvalidResponse; return false; }
-    string = laser::analog_impedance::ToString( ( laser::analog_impedance::symbol )value );
-    return true;
-}
-
-template <> bool CommandResponseValueStringToGuiValueString<laser::flag::symbol>( std::string& string )
-{
-    const int value = atoi( string.c_str() );
-    if ( value != 0 && value != 1 ) { string = g_GuiPropertyValue_InvalidResponse; return false; }
-    string = laser::flag::ToString( (laser::flag::symbol) value );
-    return true;
-}
-
-template <> bool CommandResponseValueStringToGuiValueString<laser::run_mode::cc_cp_mod::symbol>( std::string& string )
-{
-    const int value = atoi( string.c_str() );
-    if ( value != 0 && value != 1 ) { string = g_GuiPropertyValue_InvalidResponse; return false; }
-    string = laser::run_mode::cc_cp_mod::ToString( (laser::run_mode::cc_cp_mod::symbol) value );
-    return true;
-}
+template <> bool CommandResponseValueStringToGuiValueString<std::string>( std::string& );
+template <> bool CommandResponseValueStringToGuiValueString<double>( std::string& );
+template <> bool CommandResponseValueStringToGuiValueString<type::analog_impedance::symbol>( std::string& string );
+template <> bool CommandResponseValueStringToGuiValueString<type::flag::symbol>( std::string& string );
+template <> bool CommandResponseValueStringToGuiValueString<type::run_mode::cc_cp_mod::symbol>( std::string& string );
 
 /**
  * \brief Specializations of this function reformat GUI value strings into valid command argument strings.
@@ -103,41 +73,13 @@ template <> bool CommandResponseValueStringToGuiValueString<laser::run_mode::cc_
  *          translate that into the corresponding run mode number.
  */
 template <typename T>
-bool GuiValueStringToCommandArgumentString( std::string& string );
+bool GuiValueStringToCommandArgumentString( std::string& ) { return false; }
 
-template <> bool GuiValueStringToCommandArgumentString<std::string>( std::string& )
-{
-    return true;
-}
-
-template <> bool GuiValueStringToCommandArgumentString<double>( std::string& )
-{
-    return true;
-}
-
-template <> bool GuiValueStringToCommandArgumentString<laser::analog_impedance::symbol>( std::string& string )
-{
-    const laser::analog_impedance::symbol value = laser::analog_impedance::FromString( string );
-    if ( value == laser::analog_impedance::__undefined__ ) { return false; }
-    string = std::to_string( (_Longlong) value );
-    return true;
-}
-
-template <> bool GuiValueStringToCommandArgumentString<laser::flag::symbol>( std::string& string )
-{
-    const laser::flag::symbol value = laser::flag::FromString( string );
-    if ( value == laser::flag::__undefined__ ) { return false; }
-    string = std::to_string( (_Longlong) value );
-    return true;
-}
-
-template <> bool GuiValueStringToCommandArgumentString<laser::run_mode::cc_cp_mod::symbol>( std::string& string )
-{
-    const laser::run_mode::cc_cp_mod::symbol value = laser::run_mode::cc_cp_mod::FromString( string );
-    if ( value == laser::run_mode::cc_cp_mod::__undefined__ ) { return false; }
-    string = std::to_string( (_Longlong) value );
-    return true;
-}
+template <> bool GuiValueStringToCommandArgumentString<std::string>( std::string& );
+template <> bool GuiValueStringToCommandArgumentString<double>( std::string& );
+template <> bool GuiValueStringToCommandArgumentString<type::analog_impedance::symbol>( std::string& string );
+template <> bool GuiValueStringToCommandArgumentString<type::flag::symbol>( std::string& string );
+template <> bool GuiValueStringToCommandArgumentString<type::run_mode::cc_cp_mod::symbol>( std::string& string );
 
 NAMESPACE_COBOLT_END
 

@@ -65,23 +65,23 @@ LaserDevice* Laser::GetDevice()
 void Laser::SetOn( const bool on )
 {
     MutableProperty* p = dynamic_cast<MutableProperty*>( GetProperty( property::toggle ) );
-    p->Set( toggle::ToString( ( on ? toggle::on : toggle::off )  ) );
+    p->Set( type::toggle::ToString( ( on ? type::toggle::on : type::toggle::off )  ) );
 }
 
 void Laser::SetPaused( const bool paused )
 {
     MutableProperty* p = dynamic_cast<MutableProperty*>( GetProperty( property::paused ) );
-    p->Set( toggle::ToString( ( paused ? toggle::on : toggle::off ) ) ); 
+    p->Set( type::toggle::ToString( ( paused ? type::toggle::on : type::toggle::off ) ) ); 
 }
 
 bool Laser::IsOn() const
 {
-    return ( toggle::FromString( GetProperty( property::toggle )->Get<std::string>() ) == toggle::on );
+    return ( type::toggle::FromString( GetProperty( property::toggle )->Get<std::string>() ) == type::toggle::on );
 }
 
 bool Laser::IsPaused() const
 {
-    return ( toggle::FromString( GetProperty( property::paused )->Get<std::string>() ) == toggle::on );
+    return ( type::toggle::FromString( GetProperty( property::paused )->Get<std::string>() ) == type::toggle::on );
 }
 
 Property* Laser::GetProperty( const std::string& name ) const
@@ -189,21 +189,21 @@ void Laser::Incarnate()
     RegisterPropertyIfSupported( max_power_setpoint,          new BasicProperty<double>( symbol_strings[ max_power_setpoint ], device_, "gmlp?" ) );
     RegisterPropertyIfSupported( power_reading,               new BasicProperty<double>( symbol_strings[ power_reading ], device_, "pa?" ) );
     RegisterPropertyIfSupported( paused,                      new LaserPausedProperty( symbol_strings[ paused ], device_ ) );
-    RegisterPropertyIfSupported( run_mode_cc_cp_mod,          new BasicMutableProperty<run_mode::cc_cp_mod::symbol>( symbol_strings[ run_mode_cc_cp_mod ], device_, "gam?", "sam" ) );
-    RegisterPropertyIfSupported( digital_modulation_flag,     new BasicMutableProperty<flag::symbol>( symbol_strings[ digital_modulation_flag ], device_, "gdmes?", "sdmes" ) );
-    RegisterPropertyIfSupported( analog_modulation_flag,      new BasicMutableProperty<flag::symbol>( symbol_strings[ analog_modulation_flag ], device_, "games?", "sames" ) );
+    RegisterPropertyIfSupported( run_mode_cc_cp_mod,          new BasicMutableProperty<type::run_mode::cc_cp_mod::symbol>( symbol_strings[ run_mode_cc_cp_mod ], device_, "gam?", "sam" ) );
+    RegisterPropertyIfSupported( digital_modulation_flag,     new BasicMutableProperty<type::flag::symbol>( symbol_strings[ digital_modulation_flag ], device_, "gdmes?", "sdmes" ) );
+    RegisterPropertyIfSupported( analog_modulation_flag,      new BasicMutableProperty<type::flag::symbol>( symbol_strings[ analog_modulation_flag ], device_, "games?", "sames" ) );
     RegisterPropertyIfSupported( modulation_power_setpoint,   new BasicMutableProperty<double>( symbol_strings[ modulation_power_setpoint ], device_, "glmp?", "slmp" ) );
-    RegisterPropertyIfSupported( analog_impedance,            new BasicMutableProperty<analog_impedance::symbol>( symbol_strings[ analog_impedance ], device_, "galis?", "salis" ) );
+    RegisterPropertyIfSupported( analog_impedance,            new BasicMutableProperty<type::analog_impedance::symbol>( symbol_strings[ analog_impedance ], device_, "galis?", "salis" ) );
 
     // ###
     // Attach constraints to created properties:
     
     AttachConstraintIfPropertySupported( current_setpoint,          new RangeConstraint( 0.0f, GetProperty( max_current_setpoint )->Get<double>() ) );
     AttachConstraintIfPropertySupported( power_setpoint,            new RangeConstraint( 0.0f, GetProperty( max_power_setpoint )->Get<double>() ) );
-    AttachConstraintIfPropertySupported( run_mode_cc_cp_mod,        new EnumConstraint<run_mode::cc_cp_mod::symbol>( laser::run_mode::cc_cp_mod::symbol_strings, laser::run_mode::cc_cp_mod::__count__ ) );
-    AttachConstraintIfPropertySupported( digital_modulation_flag,   new EnumConstraint<flag::symbol>( laser::flag::symbol_strings, laser::flag::__count__ ) );
-    AttachConstraintIfPropertySupported( analog_modulation_flag,    new EnumConstraint<flag::symbol>( laser::flag::symbol_strings, laser::flag::__count__ ) );
-    AttachConstraintIfPropertySupported( analog_impedance,          new EnumConstraint<flag::symbol>( laser::analog_impedance::symbol_strings, laser::analog_impedance::__count__ ) );
+    AttachConstraintIfPropertySupported( run_mode_cc_cp_mod,        new EnumConstraint<type::run_mode::cc_cp_mod::symbol>( type::run_mode::cc_cp_mod::symbol_strings, type::run_mode::cc_cp_mod::__count__ ) );
+    AttachConstraintIfPropertySupported( digital_modulation_flag,   new EnumConstraint<type::flag::symbol>( type::flag::symbol_strings, type::flag::__count__ ) );
+    AttachConstraintIfPropertySupported( analog_modulation_flag,    new EnumConstraint<type::flag::symbol>( type::flag::symbol_strings, type::flag::__count__ ) );
+    AttachConstraintIfPropertySupported( analog_impedance,          new EnumConstraint<type::flag::symbol>( type::analog_impedance::symbol_strings, type::analog_impedance::__count__ ) );
 }
 
 void Laser::RegisterProperty( const laser::property::symbol propertySymbol, cobolt::Property* property )

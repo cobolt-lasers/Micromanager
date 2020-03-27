@@ -107,7 +107,7 @@ int CoboltOfficial::Initialize()
     if ( port_ == g_Property_Port_None ) {
 
         LogMessage( "CoboltOfficial::Initialize(): Serial port not selected", true );
-        return ERR_SERIAL_PORT_NOT_SELECTED;
+        return cobolt::return_code::serial_port_undefined;
     }
 
     laser_->SetupWithLaserDevice( this );
@@ -284,6 +284,6 @@ int CoboltOfficial::ExposeToGui( const Property* property )
         property->GetName().c_str(),
         property->Get<std::string>().c_str(),
         ResolvePropertyType( property->GetStereotype() ),
-        !property->MutableInGui(),
+        !property->IsMutable(),
         action );
 }
