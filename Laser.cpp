@@ -145,7 +145,8 @@ void Laser::DecomposeModelString( std::string modelString, std::vector<std::stri
 
 Laser::Laser( const std::string& modelName ) :
     modelName_( modelName ),
-    wavelength_( "Unknown" )
+    wavelength_( "Unknown" ),
+    device_( NULL )
 {}
 
 bool Laser::SupportsProperty( const property::symbol symbol ) const

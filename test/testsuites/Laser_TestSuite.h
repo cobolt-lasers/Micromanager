@@ -20,6 +20,8 @@ public:
         receivedCommand = command;
 
         if ( command == "gfv?" ) { *response = FIRMWARE_VERSION; }
+
+        return cobolt::return_code::ok;
     }
 
     std::string receivedCommand;
@@ -27,15 +29,22 @@ public:
 
 using namespace cobolt;
 
-class MyTestSuite1 : public CxxTest::TestSuite
+class Laser_TestSuite : public CxxTest::TestSuite
 {
+    LaserDevice* _laserDeviceMock;
     Laser* _someLaser;
 
 public:
 
+    Laser_TestSuite() :
+        _laserDeviceMock( new LaserDeviceMock() )
+    {
+    }
+
     void setUp()
     {
         _someLaser = Laser::Create( "-06-" );
+        _someLaser->SetupWithLaserDevice( _laserDeviceMock );
     }
 
     void tearDown()
