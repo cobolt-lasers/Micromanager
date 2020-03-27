@@ -237,9 +237,9 @@ public:
 
         guiProperty.Get( value );
         
-        if ( !FormatBeforeSetFromGui( value ) ) {
-            return return_code::invalid_property_value;
-        }
+        //if ( !FormatBeforeSetFromGui( value ) ) {
+        //    return return_code::invalid_property_value;
+        //}
 
         const int returnCode = Set( value );
 

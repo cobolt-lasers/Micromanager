@@ -46,6 +46,14 @@ template <> bool CommandResponseValueStringToGuiValueString<type::run_mode::cc_c
     return true;
 }
 
+template <> bool CommandResponseValueStringToGuiValueString<type::toggle::symbol>( std::string& string )
+{
+    const int value = atoi( string.c_str() );
+    if ( value != 0 && value != 1 ) { string = g_GuiPropertyValue_InvalidResponse; return false; }
+    string = type::toggle::ToString( ( type::toggle::symbol ) value );
+    return true;
+}
+
 /**
  * \brief Specializations of this function reformat GUI value strings into valid command argument strings.
  *
@@ -85,6 +93,14 @@ template <> bool GuiValueStringToCommandArgumentString<type::run_mode::cc_cp_mod
 {
     const type::run_mode::cc_cp_mod::symbol value = type::run_mode::cc_cp_mod::FromString( string );
     if ( value == type::run_mode::cc_cp_mod::__undefined__ ) { return false; }
+    string = std::to_string( (_Longlong) value );
+    return true;
+}
+
+template <> bool GuiValueStringToCommandArgumentString<type::toggle::symbol>( std::string& string )
+{
+    const type::toggle::symbol value = type::toggle::FromString( string );
+    if ( value == type::toggle::__undefined__ ) { return false; }
     string = std::to_string( (_Longlong) value );
     return true;
 }

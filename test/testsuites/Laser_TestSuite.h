@@ -9,42 +9,45 @@
 #include <cxxtest/TestSuite.h>
 #include "Laser.h"
 
-#define FIRMWARE_VERSION "1.2.3"
+using namespace cobolt;
 
-class LaserDeviceMock : public cobolt::LaserDevice
+class GuiPropertyMock : public GuiProperty
 {
 public:
     
-    virtual int SendCommand( const std::string& command, std::string* response = NULL )
-    {
-        receivedCommand = command;
+    GuiPropertyMock( const std::string& string ) :
+        value( string )
+    {}
 
-        if ( command == "gfv?" ) { *response = FIRMWARE_VERSION; }
-
-        return cobolt::return_code::ok;
-    }
-
-    std::string receivedCommand;
+    virtual bool Set( const std::string& string ) { value = string; return true; }
+    virtual bool Get( std::string& string ) const { string = value; return true; }
+    std::string value;
 };
 
-using namespace cobolt;
-
-class Laser_TestSuite : public CxxTest::TestSuite
+class Laser_TestSuite : public CxxTest::TestSuite, public LaserDevice
 {
-    LaserDevice* _laserDeviceMock;
+    struct PhysicalLaserMock
+    {
+        PhysicalLaserMock() :
+            firmwareVersion( "1.2.3" ),
+            isOn( false )
+        {}
+
+        std::string firmwareVersion;
+        bool isOn;
+    };
+
+    PhysicalLaserMock _physicalLaserMock;
     Laser* _someLaser;
+    std::string _lastReceivedCommand;
 
 public:
-
-    Laser_TestSuite() :
-        _laserDeviceMock( new LaserDeviceMock() )
-    {
-    }
 
     void setUp()
     {
         _someLaser = Laser::Create( "-06-" );
-        _someLaser->SetupWithLaserDevice( _laserDeviceMock );
+        _someLaser->SetupWithLaserDevice( this );
+        _lastReceivedCommand.clear();
     }
 
     void tearDown()
@@ -54,6 +57,63 @@ public:
 
     void test_GetProperty_firmware()
     {
-        TS_ASSERT_EQUALS( _someLaser->GetProperty( laser::property::firmware_version )->Get<std::string>(), FIRMWARE_VERSION );
+        TS_ASSERT_EQUALS( _someLaser->GetProperty( laser::property::firmware_version )->Get<std::string>(), _physicalLaserMock.firmwareVersion );
+    }
+
+    void test_OnGuiSetAction_toggle_on()
+    {
+        /// ###
+        /// Setup
+
+        _someLaser->SetOn( false );
+        GuiPropertyMock guiProperty( "On" );
+        
+        /// ###
+        /// Verify Setup
+
+        TS_ASSERT( !_someLaser->IsOn() );
+        
+        /// ###
+        /// Test
+
+        _someLaser->GetProperty( laser::property::toggle )->OnGuiSetAction( guiProperty );
+
+        /// ###
+        /// Verify
+        
+        TS_ASSERT( _physicalLaserMock.isOn );
+    }
+
+    void test_OnGuiSetAction_toggle_off()
+    {
+        /// ###
+        /// Setup
+
+        _physicalLaserMock.isOn = true;
+        GuiPropertyMock guiProperty( "Off" );
+
+        /// ###
+        /// Test
+
+        _someLaser->GetProperty( laser::property::toggle )->OnGuiSetAction( guiProperty );
+
+        /// ###
+        /// Verify
+
+        TS_ASSERT( !_physicalLaserMock.isOn );
+    }
+
+    /// ###
+    /// Laser Device API
+
+    virtual int SendCommand( const std::string& command, std::string* response = NULL )
+    {
+        if ( command == "gfv?" ) { *response = _physicalLaserMock.firmwareVersion; }
+        if ( command == "l1" )   { _physicalLaserMock.isOn = true; }
+        if ( command == "l0" )   { _physicalLaserMock.isOn = false; }
+        
+        _lastReceivedCommand = command;
+
+        return cobolt::return_code::ok;
     }
 };
