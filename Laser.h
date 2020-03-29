@@ -85,18 +85,44 @@ protected:
 
     Laser( const std::string& modelName );
 
-    virtual bool SupportsModelSpecificProperty( const laser::property::symbol ) const = 0;
+    virtual void CreateSpecificProperties() = 0;
+
+    /// ###
+    /// Overrideable Property Factories
+
+    virtual void CreateModelProperty();
+    virtual void CreateWavelengthProperty();
+    virtual void CreateSerialNumberProperty();
+    virtual void CreateFirmwareVersionProperty();
+    virtual void CreateOperatingHoursProperty();
+
+    virtual void CreateCurrentSetpointProperty();
+    virtual void CreateMaxCurrentSetpointProperty();
+    virtual void CreateCurrentReadingProperty();
+    virtual void CreatePowerSetpointProperty();
+    virtual void CreateMaxPowerSetpointProperty();
+
+    virtual void CreatePowerReadingProperty();
+    virtual void CreateToggleProperty();
+    virtual void CreatePausedProperty();
+    virtual void CreateRunModeProperty();
+    virtual void CreateDigitalModulationProperty();
+
+    virtual void CreateAnalogModulationFlagProperty();
+    virtual void CreateModulationPowerSetpointProperty();
+    virtual void CreateAnalogImpedanceProperty();
     
 private:
 
     static void DecomposeModelString( std::string modelString, std::vector<std::string>& modelTokens );
 
-    bool SupportsProperty( const laser::property::symbol ) const;
+    bool IsPauseCommandSupported();
+
+    void CreateGenericProperties();
 
     void Incarnate();
 
-    void RegisterProperty( const laser::property::symbol, cobolt::Property* property );
-    void RegisterPropertyIfSupported( const laser::property::symbol, cobolt::Property* property );
+    void RegisterProperty( Property* );
     void AttachConstraintIfPropertySupported( const laser::property::symbol, cobolt::MutableProperty::Constraint* );
 
     std::map<std::string, cobolt::Property*> properties_;
@@ -112,35 +138,26 @@ public:
 
     Laser_06DPL() : Laser( "06 DPL" ) {}
     
-    virtual bool SupportsModelSpecificProperty( const laser::property::symbol symbol ) const
+    virtual void CreateSpecificProperties()
     {
-        switch ( symbol ) {
-
-            case laser::property::model:
-            case laser::property::wavelength:
-            case laser::property::serial_number:
-            case laser::property::firmware_version:
-            case laser::property::operating_hours:
-            case laser::property::current_setpoint:
-            case laser::property::max_current_setpoint:
-            case laser::property::current_reading:
-            case laser::property::power_setpoint:
-            case laser::property::max_power_setpoint:
-            case laser::property::power_reading:
-            case laser::property::toggle:
-            case laser::property::paused:
-            case laser::property::run_mode_cc_cp_mod:
-            case laser::property::digital_modulation_flag:
-            case laser::property::analog_modulation_flag:
-            case laser::property::modulation_power_setpoint:
-            case laser::property::analog_impedance:
-
-                return true;
-
-            default:
-
-                return false;
-        }
+        CreateModelProperty();
+        CreateWavelengthProperty();
+        CreateSerialNumberProperty();
+        CreateFirmwareVersionProperty();
+        CreateOperatingHoursProperty();
+        CreateCurrentSetpointProperty();
+        CreateMaxCurrentSetpointProperty();
+        CreateCurrentReadingProperty();
+        CreatePowerSetpointProperty();
+        CreateMaxPowerSetpointProperty();
+        CreatePowerReadingProperty();
+        CreateToggleProperty();
+        CreatePausedProperty();
+        CreateRunModeProperty();
+        CreateDigitalModulationProperty();
+        CreateAnalogModulationFlagProperty();
+        CreateModulationPowerSetpointProperty();
+        CreateAnalogImpedanceProperty();
     }
 };
 
@@ -149,11 +166,8 @@ class Laser_Unknown : public Laser
 public:
 
     Laser_Unknown() : Laser( "Unknown" ) {}
-
-    virtual bool SupportsModelSpecificProperty( const laser::property::symbol ) const
-    {
-        return false;
-    }
+    
+    virtual void CreateSpecificProperties() {}
 };
 
 NAMESPACE_COBOLT_END

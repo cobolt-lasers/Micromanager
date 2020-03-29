@@ -30,11 +30,13 @@ class Laser_TestSuite : public CxxTest::TestSuite, public LaserDevice
     {
         PhysicalLaserMock() :
             firmwareVersion( "1.2.3" ),
-            isOn( false )
+            isOn( false ),
+            isPauseCommandSupported( true )
         {}
 
         std::string firmwareVersion;
         bool isOn;
+        bool isPauseCommandSupported;
     };
 
     PhysicalLaserMock _physicalLaserMock;

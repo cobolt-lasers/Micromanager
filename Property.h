@@ -17,6 +17,8 @@
 
 NAMESPACE_COBOLT_BEGIN
 
+class Laser;
+
 /**
  * \brief The interface  the property hierarchy sees when receiving GUI events
  *        about property get/set.
@@ -435,6 +437,65 @@ public:
     
 private:
 
+    std::string toggle_;
+};
+
+class LaserSimulatedPausedProperty : public BasicMutableProperty<type::toggle::symbol>
+{
+public:
+    
+    LaserSimulatedPausedProperty( const std::string& name, Laser* laser );
+
+    virtual int FetchAsString( std::string& string ) const
+    {
+        string = toggle_;
+        return return_code::ok;
+    }
+
+    virtual int Set( const std::string& value )
+    {
+        type::toggle::symbol toggleSymbol = type::toggle::FromString( value );
+
+        if ( toggleSymbol == type::toggle::__undefined__ ) {
+            return return_code::invalid_property_value;
+        }
+
+        if ( value == toggle_ ) {
+            return return_code::ok;
+        }
+
+        int returnCode = return_code::ok;
+        switch ( toggleSymbol ) {
+
+            // TODO NOW: Save and load laser state
+
+            case type::toggle::on:
+                returnCode = laserDevice_->SendCommand( "cc" );
+                if ( returnCode == return_code::ok ) {
+                    returnCode = laserDevice_->SendCommand( "slc 0" );
+                }
+                break;
+
+            case type::toggle::off:
+                returnCode = laserDevice_->SendCommand( "cc" );
+                if ( returnCode == return_code::ok ) {
+                    returnCode = laserDevice_->SendCommand( "slc 0" );
+                }
+                break;
+        }
+
+        return returnCode;
+    }
+
+private:
+
+    struct LaserState
+    {
+        std::string runMode_;
+        std::string a;
+    };
+
+    Laser* laser_;
     std::string toggle_;
 };
 

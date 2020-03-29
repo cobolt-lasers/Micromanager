@@ -11,6 +11,9 @@
 
 NAMESPACE_COBOLT_BEGIN
 
-
+LaserSimulatedPausedProperty::LaserSimulatedPausedProperty( const std::string& name, Laser* laser ) :
+    BasicMutableProperty<type::toggle::symbol>( name, laser->GetDevice(), "N/A", "N/A" ),
+    toggle_( type::toggle::ToString( type::toggle::off ) )
+{}
 
 NAMESPACE_COBOLT_END

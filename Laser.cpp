@@ -8,10 +8,12 @@
 
 #include <assert.h>
 #include "Laser.h"
+#include "Property.h"
 
 using namespace std;
 using namespace cobolt;
 using namespace laser;
+using namespace laser::property;
 
 Laser* Laser::Create( const std::string& modelString )
 {
@@ -149,56 +151,53 @@ Laser::Laser( const std::string& modelName ) :
     device_( NULL )
 {}
 
-bool Laser::SupportsProperty( const property::symbol symbol ) const
+void Laser::CreateModelProperty()                     { RegisterProperty( new BasicProperty<std::string>( symbol_strings[ model ], device_, "glm?") );                                                    }
+void Laser::CreateWavelengthProperty()                { RegisterProperty( new StaticStringProperty( symbol_strings[ wavelength ], this->GetWavelength()) );                                               }
+void Laser::CreateSerialNumberProperty()              { RegisterProperty( new BasicProperty<std::string>( symbol_strings[ serial_number ], device_, "gsn?") );                                            }
+void Laser::CreateFirmwareVersionProperty()           { RegisterProperty( new BasicProperty<std::string>( symbol_strings[ firmware_version ], device_, "gfv?") );                                         }
+void Laser::CreateOperatingHoursProperty()            { RegisterProperty( new BasicProperty<std::string>( symbol_strings[ operating_hours ], device_, "hrs?") );                                          }
+void Laser::CreateCurrentSetpointProperty()           { RegisterProperty( new BasicMutableProperty<double>( symbol_strings[ current_setpoint ], device_, "glc?", "slc") );                                }
+void Laser::CreateMaxCurrentSetpointProperty()        { RegisterProperty( new BasicProperty<double>( symbol_strings[ max_current_setpoint ], device_, "gmlc?") );                                         }
+void Laser::CreateCurrentReadingProperty()            { RegisterProperty( new BasicProperty<double>( symbol_strings[ current_reading ], device_, "i?") );                                                 }
+void Laser::CreatePowerSetpointProperty()             { RegisterProperty( new BasicMutableProperty<double>( symbol_strings[ power_setpoint ], device_, "p?", "slp") );                                    }
+void Laser::CreateMaxPowerSetpointProperty()          { RegisterProperty( new BasicProperty<double>( symbol_strings[ max_power_setpoint ], device_, "gmlp?") );                                           }
+void Laser::CreatePowerReadingProperty()              { RegisterProperty( new BasicProperty<double>( symbol_strings[ power_reading ], device_, "pa?") );                                                  }
+void Laser::CreateToggleProperty()                    { RegisterProperty( new ToggleProperty( symbol_strings[ toggle ], device_, "l?", "l1", "l0") );                                                     }
+void Laser::CreatePausedProperty()                    { RegisterProperty( IsPauseCommandSupported() ? new LaserPausedProperty( symbol_strings[ paused ], device_) : new LaserSimulatedPausedProperty( symbol_strings[ paused ], this ) );                                                                  }
+void Laser::CreateRunModeProperty()                   { RegisterProperty( new BasicMutableProperty<type::run_mode::cc_cp_mod::symbol>( symbol_strings[ run_mode_cc_cp_mod ], device_, "gam?", "sam") );   }
+void Laser::CreateDigitalModulationProperty()         { RegisterProperty( new BasicMutableProperty<type::flag::symbol>( symbol_strings[ digital_modulation_flag ], device_, "gdmes?", "sdmes") );         }
+void Laser::CreateAnalogModulationFlagProperty()      { RegisterProperty( new BasicMutableProperty<type::flag::symbol>( symbol_strings[ analog_modulation_flag ], device_, "games?", "sames") );          }
+void Laser::CreateModulationPowerSetpointProperty()   { RegisterProperty( new BasicMutableProperty<double>( symbol_strings[ modulation_power_setpoint ], device_, "glmp?", "slmp") );                     }
+void Laser::CreateAnalogImpedanceProperty()           { RegisterProperty( new BasicMutableProperty<type::analog_impedance::symbol>( symbol_strings[ analog_impedance ], device_, "galis?", "salis") );    }
+
+bool Laser::IsPauseCommandSupported()
 {
-    switch ( symbol ) {
+    std::string response;
+    device_->SendCommand( "l0r", &response );
+    
+    return ( response.find( "Syntax error" ) == std::string::npos );
+}
 
-        case property::model:
-        case property::wavelength:
-        case property::serial_number:
-        case property::firmware_version:
-        case property::operating_hours:
-        case property::toggle:
-        case property::paused:
-
-            return true;
-
-        default:
-
-            return SupportsModelSpecificProperty( symbol );
-    }
+void Laser::CreateGenericProperties()
+{
+    CreateModelProperty();
+    CreateWavelengthProperty();
+    CreateSerialNumberProperty();
+    CreateFirmwareVersionProperty();
+    CreateOperatingHoursProperty();
+    CreatePausedProperty();
+    CreateToggleProperty();
 }
 
 void Laser::Incarnate()
 {
-    using namespace property;
-    
-    // ###
-    // Create supported properties:
-    
-    RegisterProperty( model,            new BasicProperty<std::string>( symbol_strings[ model ], device_, "glm?" ) );
-    RegisterProperty( wavelength,       new StaticStringProperty( symbol_strings[ wavelength ], this->GetWavelength() ) );
-    RegisterProperty( serial_number,    new BasicProperty<std::string>( symbol_strings[ serial_number ], device_, "gsn?" ) );
-    RegisterProperty( firmware_version, new BasicProperty<std::string>( symbol_strings[ firmware_version ], device_, "gfv?" ) );
-    RegisterProperty( operating_hours,  new BasicProperty<std::string>( symbol_strings[ operating_hours ], device_, "hrs?" ) );
-    RegisterProperty( toggle,           new ToggleProperty( symbol_strings[ toggle ], device_, "l?", "l1", "l0" ) );
-    
-    RegisterPropertyIfSupported( current_setpoint,            new BasicMutableProperty<double>( symbol_strings[ current_setpoint ], device_, "glc?", "slc" ) );
-    RegisterPropertyIfSupported( max_current_setpoint,        new BasicProperty<double>( symbol_strings[ max_current_setpoint ], device_, "gmlc?" ) );
-    RegisterPropertyIfSupported( current_reading,             new BasicProperty<double>( symbol_strings[ current_reading ], device_, "i?" ) );
-    RegisterPropertyIfSupported( power_setpoint,              new BasicMutableProperty<double>( symbol_strings[ power_setpoint ], device_, "p?", "slp" ) );
-    RegisterPropertyIfSupported( max_power_setpoint,          new BasicProperty<double>( symbol_strings[ max_power_setpoint ], device_, "gmlp?" ) );
-    RegisterPropertyIfSupported( power_reading,               new BasicProperty<double>( symbol_strings[ power_reading ], device_, "pa?" ) );
-    RegisterPropertyIfSupported( paused,                      new LaserPausedProperty( symbol_strings[ paused ], device_ ) );
-    RegisterPropertyIfSupported( run_mode_cc_cp_mod,          new BasicMutableProperty<type::run_mode::cc_cp_mod::symbol>( symbol_strings[ run_mode_cc_cp_mod ], device_, "gam?", "sam" ) );
-    RegisterPropertyIfSupported( digital_modulation_flag,     new BasicMutableProperty<type::flag::symbol>( symbol_strings[ digital_modulation_flag ], device_, "gdmes?", "sdmes" ) );
-    RegisterPropertyIfSupported( analog_modulation_flag,      new BasicMutableProperty<type::flag::symbol>( symbol_strings[ analog_modulation_flag ], device_, "games?", "sames" ) );
-    RegisterPropertyIfSupported( modulation_power_setpoint,   new BasicMutableProperty<double>( symbol_strings[ modulation_power_setpoint ], device_, "glmp?", "slmp" ) );
-    RegisterPropertyIfSupported( analog_impedance,            new BasicMutableProperty<type::analog_impedance::symbol>( symbol_strings[ analog_impedance ], device_, "galis?", "salis" ) );
+    CreateGenericProperties();
+    CreateSpecificProperties();
 
     // ###
     // Attach constraints to created properties:
     
+    // TODO: If max current laser type specific, then place these in the CreateXXXXXProperty() functions as we no longer need to rely on other properties.
     AttachConstraintIfPropertySupported( current_setpoint,          new RangeConstraint( 0.0f, GetProperty( max_current_setpoint )->Get<double>() ) );
     AttachConstraintIfPropertySupported( power_setpoint,            new RangeConstraint( 0.0f, GetProperty( max_power_setpoint )->Get<double>() ) );
     AttachConstraintIfPropertySupported( run_mode_cc_cp_mod,        new EnumConstraint<type::run_mode::cc_cp_mod::symbol>( type::run_mode::cc_cp_mod::symbol_strings, type::run_mode::cc_cp_mod::__count__ ) );
@@ -207,18 +206,10 @@ void Laser::Incarnate()
     AttachConstraintIfPropertySupported( analog_impedance,          new EnumConstraint<type::flag::symbol>( type::analog_impedance::symbol_strings, type::analog_impedance::__count__ ) );
 }
 
-void Laser::RegisterProperty( const laser::property::symbol propertySymbol, cobolt::Property* property )
+void Laser::RegisterProperty( Property* property )
 {
-    properties_[ property::ToString( propertySymbol ) ] = property;
-}
-
-void Laser::RegisterPropertyIfSupported( const property::symbol propertySymbol, cobolt::Property* property )
-{
-    if ( !SupportsProperty( propertySymbol ) ) {
-        return;
-    }
-    
-    RegisterProperty( propertySymbol, property );
+    assert( property != NULL );
+    properties_[ property->GetName() ] = property;
 }
 
 void Laser::AttachConstraintIfPropertySupported( const property::symbol propertySymbol, cobolt::MutableProperty::Constraint* constraint )
