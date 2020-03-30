@@ -31,20 +31,18 @@ namespace laser
         GENERATOR( operating_hours,           5,   "Operating Hours"           ) \
                                                                                  \
         GENERATOR( current_setpoint,          6,   "Current Setpoint"          ) \
-        GENERATOR( max_current_setpoint,      7,   "Max Current Setpoint"      ) \
-        GENERATOR( current_reading,           8,   "Measured Current"          ) \
-        GENERATOR( power_setpoint,            9,   "Power Setpoint"            ) \
-        GENERATOR( max_power_setpoint,        10,  "Max Power Setpoint"        ) \
+        GENERATOR( current_reading,           7,   "Measured Current"          ) \
+        GENERATOR( power_setpoint,            8,   "Power Setpoint"            ) \
+        GENERATOR( power_reading,             9,   "Measured Power"            ) \
+        GENERATOR( toggle,                    10,  "Status"                    ) \
                                                                                  \
-        GENERATOR( power_reading,             11,  "Measured Power"            ) \
-        GENERATOR( toggle,                    12,  "Status"                    ) \
-        GENERATOR( paused,                    13,  "Paused"                    ) \
-        GENERATOR( run_mode_cc_cp_mod,        14,  "Run Mode"                  ) \
-        GENERATOR( digital_modulation_flag,   15,  "Digital Modulation"        ) \
+        GENERATOR( paused,                    11,  "Paused"                    ) \
+        GENERATOR( run_mode_cc_cp_mod,        12,  "Run Mode"                  ) \
+        GENERATOR( digital_modulation_flag,   13,  "Digital Modulation"        ) \
+        GENERATOR( analog_modulation_flag,    14,  "Analog Modulation"         ) \
+        GENERATOR( modulation_power_setpoint, 15,  "Modulation Power Setpoint" ) \
                                                                                  \
-        GENERATOR( analog_modulation_flag,    16,  "Analog Modulation"         ) \
-        GENERATOR( modulation_power_setpoint, 17,  "Modulation Power Setpoint" ) \
-        GENERATOR( analog_impedance,          18,  "Analog Impedance"          )
+        GENERATOR( analog_impedance,          16,  "Analog Impedance"          )
     
     namespace property { GENERATE_ENUM_STRING_MAP( FOREACH_PROPERTY ); }
 
@@ -97,39 +95,45 @@ protected:
     virtual void CreateOperatingHoursProperty();
 
     virtual void CreateCurrentSetpointProperty();
-    virtual void CreateMaxCurrentSetpointProperty();
     virtual void CreateCurrentReadingProperty();
     virtual void CreatePowerSetpointProperty();
-    virtual void CreateMaxPowerSetpointProperty();
-
     virtual void CreatePowerReadingProperty();
     virtual void CreateToggleProperty();
+
     virtual void CreatePausedProperty();
     virtual void CreateRunModeProperty();
     virtual void CreateDigitalModulationProperty();
-
     virtual void CreateAnalogModulationFlagProperty();
     virtual void CreateModulationPowerSetpointProperty();
+
     virtual void CreateAnalogImpedanceProperty();
     
 private:
 
+    enum unit_prefix_t { NoPrefix, Milli };
+
     static void DecomposeModelString( std::string modelString, std::vector<std::string>& modelTokens );
 
+    void Initialize();
+
+    bool HasProperty( const laser::property::symbol ) const;
     bool IsPauseCommandSupported();
 
     void CreateGenericProperties();
 
-    void Incarnate();
-
     void RegisterProperty( Property* );
-    void AttachConstraintIfPropertySupported( const laser::property::symbol, cobolt::MutableProperty::Constraint* );
-
+    
     std::map<std::string, cobolt::Property*> properties_;
     
     std::string modelName_;
     std::string wavelength_;
     LaserDevice* device_;
+
+    double maxCurrentSetpoint_;
+    double maxPowerSetpoint_;
+
+    unit_prefix_t currentUnitPrefix_;
+    unit_prefix_t powerUnitPrefix_;
 };
 
 class Laser_06DPL : public Laser
@@ -146,10 +150,8 @@ public:
         CreateFirmwareVersionProperty();
         CreateOperatingHoursProperty();
         CreateCurrentSetpointProperty();
-        CreateMaxCurrentSetpointProperty();
         CreateCurrentReadingProperty();
         CreatePowerSetpointProperty();
-        CreateMaxPowerSetpointProperty();
         CreatePowerReadingProperty();
         CreateToggleProperty();
         CreatePausedProperty();

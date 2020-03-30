@@ -49,7 +49,7 @@ public:
 
     enum Stereotype { String, Float, Integer };
     
-    class FetchValueModifier
+    class FetchValueModifier // TODO: Deprecated?
     {
     public:
 
