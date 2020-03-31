@@ -110,7 +110,11 @@ int CoboltOfficial::Initialize()
         return cobolt::return_code::serial_port_undefined;
     }
 
-    laser_->SetupWithLaserDevice( this );
+    laser_ = Laser::Create( this );
+
+    if ( laser_ == NULL ) {
+        return cobolt::return_code::error;
+    }
 
     for ( Laser::PropertyIterator it = laser_->GetPropertyIteratorBegin(); it != laser_->GetPropertyIteratorEnd(); it++ ) {
         ExposeToGui( it->second );

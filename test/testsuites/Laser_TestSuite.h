@@ -47,8 +47,7 @@ public:
 
     void setUp()
     {
-        _someLaser = Laser::Create( "-06-" );
-        _someLaser->SetupWithLaserDevice( this );
+        _someLaser = Laser::Create( this );
         _lastReceivedCommand.clear();
     }
 
@@ -113,6 +112,7 @@ public:
         if ( command == "gfv?" ) { *response = _physicalLaserMock.firmwareVersion; }
         if ( command == "l1" )   { _physicalLaserMock.isOn = true; }
         if ( command == "l0" )   { _physicalLaserMock.isOn = false; }
+        if ( command == "glm?" ) { *response = "0485-06-01"; }
         
         _lastReceivedCommand = command;
 
