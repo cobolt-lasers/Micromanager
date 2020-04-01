@@ -111,6 +111,9 @@ int CoboltOfficial::Initialize()
         return cobolt::return_code::serial_port_undefined;
     }
 
+    // Make sure 'device mode' is selected:
+    SendCommand( "1" );
+
     laser_ = Laser::Create( this );
 
     if ( laser_ == NULL ) {
@@ -196,29 +199,35 @@ int CoboltOfficial::Fire( double deltaT )
  */
 int CoboltOfficial::SendCommand( const std::string& command, std::string* response )
 {
-    int reply = SendSerialCommand( port_.c_str(), command.c_str(), "\r" );
-    CDeviceUtils::SleepMs( 50 );
+    Logger::Instance()->Log( "CoboltOfficial::SendCommand: About to send command '" + command + "', response expected=" + ( response != NULL ? "yes" : "no" ), true );
 
-    if ( reply != cobolt::return_code::ok ) {
+    int returnCode = SendSerialCommand( port_.c_str(), command.c_str(), "\r" );
+    
+    if ( returnCode == cobolt::return_code::ok && response != NULL ) {
 
-        LogMessage( "CoboltOfficial::SendSerialCmd: SendSerialCommand Failed: " + std::to_string( (_Longlong) reply ), true );
+        returnCode = GetSerialAnswer( port_.c_str(), "\r\n", *response );
+        //CDeviceUtils::SleepMs( 1000 );
 
-    } else if ( response != NULL ) {
+        if ( returnCode != cobolt::return_code::ok ) {
 
-        reply = GetSerialAnswer( port_.c_str(), "\r\n", *response );
-
-        if ( reply != cobolt::return_code::ok ) {
-
-            LogMessage( "CoboltOfficial::SendSerialCmd: GetSerialAnswer Failed: " + std::to_string( (_Longlong) reply ), true );
+            Logger::Instance()->Log( "CoboltOfficial::SendCommand: GetSerialAnswer Failed: " + std::to_string( (_Longlong) returnCode ), true );
 
         } else if ( response->find( "error" ) != std::string::npos ) { // TODO: make find case insensitive
 
-            LogMessage( "CoboltOfficial::SendSerialCmd: Sent: " + command + " Reply received: " + *response, true );
-            reply = cobolt::return_code::unsupported_command;
+            Logger::Instance()->Log( "CoboltOfficial::SendCommand: Sent: " + command + " Reply received: " + *response, true );
+            returnCode = cobolt::return_code::unsupported_command;
+        }
+    } else {
+
+        // Flush the response (failing to do so will result in this response being provided as the response of the next command):
+        std::string ignoredResponse;
+        GetSerialAnswer( port_.c_str(), "\r\n", ignoredResponse );
+        
+        if ( returnCode != cobolt::return_code::ok ) {
+            Logger::Instance()->Log( "CoboltOfficial::SendCommand: SendSerialCommand Failed: " + std::to_string( (_Longlong) returnCode ), true );
         }
     }
-   
-    return reply;
+    return returnCode;
 }
 
 void CoboltOfficial::SendLogMessage( const char* message, bool debug ) const
