@@ -24,26 +24,26 @@ NAMESPACE_COBOLT_BEGIN
 namespace laser
 {
     #define FOREACH_PROPERTY( GENERATOR )                                        \
-        GENERATOR( name,                      1,   "Name"                      ) \
-        GENERATOR( model,                     2,   "Model"                     ) \
-        GENERATOR( wavelength,                3,   "Wavelength"                ) \
-        GENERATOR( serial_number,             4,   "Serial Number"             ) \
-        GENERATOR( firmware_version,          5,   "Firmware Version"          ) \
+        GENERATOR( name,                      0,   "Name"                      ) \
+        GENERATOR( model,                     1,   "Model"                     ) \
+        GENERATOR( wavelength,                2,   "Wavelength"                ) \
+        GENERATOR( serial_number,             3,   "Serial Number"             ) \
+        GENERATOR( firmware_version,          4,   "Firmware Version"          ) \
                                                                                  \
-        GENERATOR( operating_hours,           6,   "Operating Hours"           ) \
-        GENERATOR( current_setpoint,          7,   "Current Setpoint"          ) \
-        GENERATOR( current_reading,           8,   "Measured Current"          ) \
-        GENERATOR( power_setpoint,            9,   "Power Setpoint"            ) \
-        GENERATOR( power_reading,             10,  "Measured Power"            ) \
+        GENERATOR( operating_hours,           5,   "Operating Hours"           ) \
+        GENERATOR( current_setpoint,          6,   "Current Setpoint"          ) \
+        GENERATOR( current_reading,           7,   "Measured Current"          ) \
+        GENERATOR( power_setpoint,            8,   "Power Setpoint"            ) \
+        GENERATOR( power_reading,             9,   "Measured Power"            ) \
                                                                                  \
-        GENERATOR( toggle,                    11,  "Status"                    ) \
-        GENERATOR( paused,                    12,  "Paused"                    ) \
-        GENERATOR( run_mode_cc_cp_mod,        13,  "Run Mode"                  ) \
-        GENERATOR( digital_modulation_flag,   14,  "Digital Modulation"        ) \
-        GENERATOR( analog_modulation_flag,    15,  "Analog Modulation"         ) \
+        GENERATOR( toggle,                    10,  "Status"                    ) \
+        GENERATOR( paused,                    11,  "Paused"                    ) \
+        GENERATOR( run_mode_cc_cp_mod,        12,  "Run Mode"                  ) \
+        GENERATOR( digital_modulation_flag,   13,  "Digital Modulation"        ) \
+        GENERATOR( analog_modulation_flag,    14,  "Analog Modulation"         ) \
                                                                                  \
-        GENERATOR( modulation_power_setpoint, 16,  "Modulation Power Setpoint" ) \
-        GENERATOR( analog_impedance,          17,  "Analog Impedance"          )
+        GENERATOR( modulation_power_setpoint, 15,  "Modulation Power Setpoint" ) \
+        GENERATOR( analog_impedance,          16,  "Analog Impedance"          )
     
     namespace property { GENERATE_ENUM_STRING_MAP( FOREACH_PROPERTY ); }
 

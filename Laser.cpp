@@ -55,6 +55,33 @@ Laser* Laser::Create( LaserDevice* device )
         laser->CreateModulationPowerSetpointProperty();
         laser->CreateAnalogImpedanceProperty();
 
+    } else if ( modelString.find( "-05-" ) != std::string::npos ) {
+
+        laser = new Laser( "Compact 05", device );
+
+        laser->currentUnitPrefix_ = Milli; // TODO: Set correct value.
+        laser->powerUnitPrefix_ = Milli; // TODO: Set correct value.
+        laser->maxCurrentSetpoint_ = 3.0f;
+        laser->maxPowerSetpoint_ = 0.1f; // TODO: Pick proper value.
+
+        laser->CreateNameProperty();
+        laser->CreateModelProperty();
+        laser->CreateWavelengthProperty();
+        laser->CreateSerialNumberProperty();
+        laser->CreateFirmwareVersionProperty();
+        laser->CreateOperatingHoursProperty();
+        laser->CreateCurrentSetpointProperty();
+        laser->CreateCurrentReadingProperty();
+        laser->CreatePowerSetpointProperty();
+        laser->CreatePowerReadingProperty();
+        laser->CreateToggleProperty();
+        laser->CreatePausedProperty();
+        laser->CreateRunModeProperty();
+        laser->CreateDigitalModulationProperty();
+        laser->CreateAnalogModulationFlagProperty();
+        laser->CreateModulationPowerSetpointProperty();
+        laser->CreateAnalogImpedanceProperty();
+        
     } else {
 
         laser = new Laser( "Unknown", device );
@@ -66,6 +93,8 @@ Laser* Laser::Create( LaserDevice* device )
         laser->wavelength_ = "Unknown";
     }
     
+    Logger::Instance()->Log( "Created laser '" + laser->GetName() + "'", true );
+
     return laser;
 }
 
@@ -142,7 +171,7 @@ Laser::PropertyIterator Laser::GetPropertyIteratorBegin()
 
 Laser::PropertyIterator Laser::GetPropertyIteratorEnd()
 {
-    return properties_.begin();
+    return properties_.end();
 }
 
 /**
@@ -155,7 +184,7 @@ void Laser::DecomposeModelString( std::string modelString, std::vector<std::stri
 {
     std::string token;
 
-    for ( std::string::iterator its = modelString.begin(); its < modelString.end(); its++ ) {
+    for ( std::string::iterator its = modelString.begin(); its != modelString.end(); its++ ) {
 
         if ( *its != '-' ) {
 
@@ -254,31 +283,36 @@ void Laser::CreateToggleProperty()
 
 void Laser::CreatePausedProperty()
 {
+    MutableProperty* property;
+
     if ( IsPauseCommandSupported() ) {
-        RegisterProperty( new LaserPausedProperty( symbol_strings[ paused ], device_ ) ); 
+        property = new LaserPausedProperty( symbol_strings[ paused ], device_ );
     } else {
-        RegisterProperty( new LaserSimulatedPausedProperty( symbol_strings[ paused ], this ) );
+        property = new LaserSimulatedPausedProperty( symbol_strings[ paused ], this );
     }
+    
+    property->SetupWith( new EnumConstraint<type::toggle::symbol>( type::toggle::symbol_strings, type::toggle::__count__ ) );
+    RegisterProperty( property );
 }
 
 void Laser::CreateRunModeProperty()
 {
     MutableProperty* property = new BasicMutableProperty<type::run_mode::cc_cp_mod::symbol>( symbol_strings[ run_mode_cc_cp_mod ], device_, "gam?", "sam" );
-    //property->SetupWith( new EnumConstraint<type::run_mode::cc_cp_mod::symbol>( type::run_mode::cc_cp_mod::symbol_strings, type::run_mode::cc_cp_mod::__count__ ) );
+    property->SetupWith( new EnumConstraint<type::run_mode::cc_cp_mod::symbol>( type::run_mode::cc_cp_mod::symbol_strings, type::run_mode::cc_cp_mod::__count__ ) );
     RegisterProperty( property );
 }
 
 void Laser::CreateDigitalModulationProperty()
 {
     MutableProperty* property = new BasicMutableProperty<type::flag::symbol>( symbol_strings[ digital_modulation_flag ], device_, "gdmes?", "sdmes" );
-    //property->SetupWith( new EnumConstraint<type::flag::symbol>( type::flag::symbol_strings, type::flag::__count__ ) );
+    property->SetupWith( new EnumConstraint<type::flag::symbol>( type::flag::symbol_strings, type::flag::__count__ ) );
     RegisterProperty( property );
 }
 
 void Laser::CreateAnalogModulationFlagProperty()
 {
     MutableProperty* property = new BasicMutableProperty<type::flag::symbol>( symbol_strings[ analog_modulation_flag ], device_, "games?", "sames" );
-    //property->SetupWith( new EnumConstraint<type::flag::symbol>( type::flag::symbol_strings, type::flag::__count__ ) );
+    property->SetupWith( new EnumConstraint<type::flag::symbol>( type::flag::symbol_strings, type::flag::__count__ ) );
     RegisterProperty( property );
 }
 
@@ -290,7 +324,7 @@ void Laser::CreateModulationPowerSetpointProperty()
 void Laser::CreateAnalogImpedanceProperty()
 {
     MutableProperty* property = new BasicMutableProperty<type::analog_impedance::symbol>( symbol_strings[ analog_impedance ], device_, "galis?", "salis" );
-    //property->SetupWith( new EnumConstraint<type::flag::symbol>( type::analog_impedance::symbol_strings, type::analog_impedance::__count__ ) );
+    property->SetupWith( new EnumConstraint<type::flag::symbol>( type::analog_impedance::symbol_strings, type::analog_impedance::__count__ ) );
     RegisterProperty( property );
 }
 

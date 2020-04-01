@@ -260,13 +260,18 @@ int CoboltOfficial::OnPropertyAction_Laser( MM::PropertyBase* mm_property, MM::A
 {
     GuiPropertyAdapter adapterProperty( mm_property );
 
-    if ( action == MM::BeforeGet ) {
-        return laser_->GetProperty( mm_property->GetName() )->OnGuiGetAction( adapterProperty );
-    } else if ( action == MM::AfterSet ) {
-        return laser_->GetProperty( mm_property->GetName() )->OnGuiSetAction( adapterProperty );
-    }
+    int returnCode = return_code::ok;
+    Property* property = laser_->GetProperty( mm_property->GetName() );
 
-    return cobolt::return_code::ok;
+    if ( action == MM::BeforeGet ) {
+        returnCode = property->OnGuiGetAction( adapterProperty );
+    } else if ( action == MM::AfterSet ) {
+        LogMessage( "CoboltOfficial: Property before update = { " + property->ObjectString() + " }", true );
+        returnCode = property->OnGuiSetAction( adapterProperty );
+        LogMessage( "CoboltOfficial: Property after update = { " + property->ObjectString() + " }", true );
+    }
+    
+    return returnCode;
 }
 
 MM::PropertyType CoboltOfficial::ResolvePropertyType( const cobolt::Property::Stereotype stereotype ) const
@@ -284,10 +289,18 @@ MM::PropertyType CoboltOfficial::ResolvePropertyType( const cobolt::Property::St
 int CoboltOfficial::ExposeToGui( const Property* property )
 {
     CPropertyAction* action = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_Laser );
-    return CreateProperty(
+    const int returnCode = CreateProperty(
         property->GetName().c_str(),
         property->Get<std::string>().c_str(),
         ResolvePropertyType( property->GetStereotype() ),
         !property->IsMutable(),
         action );
+    
+    if ( returnCode != return_code::ok ) {
+        LogMessage( "CoboltOfficial: Failed to expose property { " + property->ObjectString() + " } to GUI.", true );
+    } else {
+        LogMessage( "CoboltOfficial: Exposed property { " + property->ObjectString() + " } to GUI.", true );
+    }
+
+    return returnCode;
 }

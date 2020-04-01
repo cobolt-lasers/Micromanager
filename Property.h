@@ -153,6 +153,14 @@ public:
 
     virtual int FetchAsString( std::string& string ) const = 0;
 
+    /**
+     * \brief The property object represented in a string. For logging/debug purposes.
+     */
+    virtual std::string ObjectString() const
+    {
+        return "name_ = " + name_ + "; ";
+    }
+
 protected:
 
     void SetToUnknownValue( std::string& string ) const
@@ -171,10 +179,10 @@ protected:
     
     template <typename T> Stereotype ResolveStereotype() const                              { return String;  } // Default
     template <> Stereotype ResolveStereotype<std::string>() const                           { return String;  }
-    template <> Stereotype ResolveStereotype<type::analog_impedance::symbol>() const       { return String;  }
-    template <> Stereotype ResolveStereotype<type::flag::symbol>() const                   { return String;  }
-    template <> Stereotype ResolveStereotype<type::run_mode::cc_cp_mod::symbol>() const    { return String;  }
-    template <> Stereotype ResolveStereotype<type::toggle::symbol>() const                 { return String;  }
+    template <> Stereotype ResolveStereotype<type::analog_impedance::symbol>() const        { return String;  }
+    template <> Stereotype ResolveStereotype<type::flag::symbol>() const                    { return String;  }
+    template <> Stereotype ResolveStereotype<type::run_mode::cc_cp_mod::symbol>() const     { return String;  }
+    template <> Stereotype ResolveStereotype<type::toggle::symbol>() const                  { return String;  }
     template <> Stereotype ResolveStereotype<double>() const                                { return Float;   }
     template <> Stereotype ResolveStereotype<int>() const                                   { return Integer; }
 
@@ -292,6 +300,11 @@ public:
         return return_code::ok;
     }
 
+    virtual std::string ObjectString() const
+    {
+        return Property::ObjectString() + ( "value_ = " + value_ + "; " );
+    }
+
 private:
 
     std::string value_;
@@ -320,7 +333,12 @@ public:
         if ( !CommandResponseValueStringToGuiValueString<T>( string ) ) { returnCode = return_code::error; }
         return returnCode;
     }
-    
+
+    virtual std::string ObjectString() const
+    {
+        return Property::ObjectString() + ( "getCommand_ = " + getCommand_ + "; " );
+    }
+
 private:
 
     LaserDevice* laserDevice_;
@@ -364,6 +382,11 @@ public:
         return laserDevice_->SendCommand( preparedSetCommand );
     }
 
+    virtual std::string ObjectString() const
+    {
+        return MutableProperty::ObjectString() + ( "getCommand_ = " + getCommand_ + "; setCommand_ = " + setCommand_ + "; " );
+    }
+
 protected:
 
     LaserDevice* laserDevice_;
@@ -401,6 +424,11 @@ public:
         return return_code::error;
     }
 
+    virtual std::string ObjectString() const
+    {
+        return BasicMutableProperty<type::toggle::symbol>::ObjectString() + ( "onCommand_ = " + onCommand_ + "; offCommand_ = " + offCommand_ + "; " );
+    }
+
 private:
 
     std::string onCommand_;
@@ -434,7 +462,12 @@ public:
         
         return returnCode;
     }
-    
+
+    virtual std::string ObjectString() const
+    {
+        return BasicMutableProperty<type::toggle::symbol>::ObjectString() + ( "toggle_ = " + toggle_ + "; " );
+    }
+
 private:
 
     std::string toggle_;
@@ -486,7 +519,7 @@ public:
 
         return returnCode;
     }
-
+    
 private:
 
     struct LaserState
@@ -516,6 +549,8 @@ public:
             if ( returnCode != return_code::ok ) {
                 return returnCode;
             }
+            
+            Logger::Instance()->Log( "Exported enum constraint value '" + validValues_[ i ] + "' for property '" + propertyName + "' to GUI.", true );
         }
         
         return return_code::ok;
@@ -538,7 +573,21 @@ public:
     
     virtual int ExportToGuiEnvironment( const std::string& propertyName, GuiEnvironment* environment ) const
     {
-        return environment->RegisterAllowedGuiPropertyRange( propertyName, min_, max_ );
+        const int returnCode = environment->RegisterAllowedGuiPropertyRange( propertyName, min_, max_ );
+        
+        if ( returnCode == return_code::ok ) {
+            Logger::Instance()->Log( "Exported range constraint { " +
+                std::to_string( (long double) min_ ) + ", " +
+                std::to_string( (long double) max_ ) +
+                " } for property '" + propertyName + "' to GUI.", true );
+        } else {
+            Logger::Instance()->Log( "Failed to export range constraint { " +
+                std::to_string( (long double) min_ ) + ", " +
+                std::to_string( (long double) max_ ) +
+                " } for property '" + propertyName + "' to GUI.", true );
+        }
+
+        return returnCode;
     }
 
 private:

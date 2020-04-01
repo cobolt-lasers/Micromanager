@@ -39,7 +39,7 @@ public:
             return;
         }
         
-        gateway_->SendLogMessage( message.c_str(), debug );
+        gateway_->SendLogMessage( ("CoboltOfficial: " + message).c_str(), debug );
     }
 
 private:
