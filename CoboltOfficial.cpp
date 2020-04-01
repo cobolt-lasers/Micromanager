@@ -13,7 +13,7 @@
 using namespace std;
 using namespace cobolt;
 
-const char * g_DeviceName = "Official Cobolt Device Adapter";
+const char * g_DeviceName = "Cobolt Laser";
 const char * g_DeviceDescription = "Official device adapter for Cobolt lasers.";
 const char * g_DeviceVendorName = "Cobolt - a HÜBNER Group company";
 
@@ -69,7 +69,7 @@ CoboltOfficial::CoboltOfficial() :
     port_( "None" )
 {
     cobolt::Logger::Instance()->SetupWithGateway( this );
-
+    
     // TODO Auto-generated constructor stub
     assert( strlen( g_DeviceName ) < (unsigned int) MM::MaxStrLength );
 
@@ -284,11 +284,11 @@ int CoboltOfficial::OnPropertyAction_Laser( MM::PropertyBase* mm_property, MM::A
         property->FetchAsString( oldValue );
         adapterProperty.Get( newValue );
 
-        LogMessage( "CoboltOfficial: Property before update = { " + property->ObjectString() + " } with value = '" + oldValue + "'", true );
+        LogMessage( "Property before update = { " + property->ObjectString() + " } with value = '" + oldValue + "'", true );
 
         returnCode = property->OnGuiSetAction( adapterProperty );
         
-        LogMessage( "CoboltOfficial: Property after update = { " + property->ObjectString() + " } with value = '" + newValue + "'", true );
+        LogMessage( "Property after update = { " + property->ObjectString() + " } with value = '" + newValue + "'", true );
     }
     
     return returnCode;
@@ -319,9 +319,9 @@ int CoboltOfficial::ExposeToGui( const Property* property )
         action );
     
     if ( returnCode != return_code::ok ) {
-        LogMessage( "CoboltOfficial: Failed to expose property { " + property->ObjectString() + " } to GUI.", true );
+        LogMessage( "Failed to expose property { " + property->ObjectString() + " } to GUI.", true );
     } else {
-        LogMessage( "CoboltOfficial: Exposed property { " + property->ObjectString() + " } to GUI with initial value = '" + initialValue + "'.", true );
+        LogMessage( "Exposed property { " + property->ObjectString() + " } to GUI with initial value = '" + initialValue + "'.", true );
     }
 
     return returnCode;

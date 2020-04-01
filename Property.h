@@ -247,13 +247,20 @@ public:
 
         guiProperty.Get( value );
         
+        Logger::Instance()->Log( "Attempting to set property '" + GetName() + "' to value=" + value, true );
+
         const int returnCode = Set( value );
 
         if ( returnCode != return_code::ok ) {
 
+            Logger::Instance()->Log( "Failed set property '" + GetName() + "'", true );
             SetToUnknownValue( guiProperty );
             return returnCode;
         }
+
+        Logger::Instance()->Log( "Successfully set property '" + GetName() + "' to value=" + Get<std::string>(), true );
+
+        guiProperty.Set( value );
 
         return return_code::ok;
     }
