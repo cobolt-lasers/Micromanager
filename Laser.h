@@ -21,35 +21,6 @@
 
 NAMESPACE_COBOLT_BEGIN
 
-namespace laser
-{
-    #define FOREACH_PROPERTY( GENERATOR )                                        \
-        GENERATOR( name,                      0,   "Name"                      ) \
-        GENERATOR( model,                     1,   "Model"                     ) \
-        GENERATOR( wavelength,                2,   "Wavelength"                ) \
-        GENERATOR( serial_number,             3,   "Serial Number"             ) \
-        GENERATOR( firmware_version,          4,   "Firmware Version"          ) \
-                                                                                 \
-        GENERATOR( operating_hours,           5,   "Operating Hours"           ) \
-        GENERATOR( current_setpoint,          6,   "Current Setpoint"          ) \
-        GENERATOR( current_reading,           7,   "Measured Current"          ) \
-        GENERATOR( power_setpoint,            8,   "Power Setpoint"            ) \
-        GENERATOR( power_reading,             9,   "Measured Power"            ) \
-                                                                                 \
-        GENERATOR( toggle,                    10,  "Status"                    ) \
-        GENERATOR( paused,                    11,  "Paused"                    ) \
-        GENERATOR( run_mode_cc_cp_mod,        12,  "Run Mode"                  ) \
-        GENERATOR( digital_modulation_flag,   13,  "Digital Modulation"        ) \
-        GENERATOR( analog_modulation_flag,    14,  "Analog Modulation"         ) \
-                                                                                 \
-        GENERATOR( modulation_power_setpoint, 15,  "Modulation Power Setpoint" ) \
-        GENERATOR( analog_impedance,          16,  "Analog Impedance"          )
-    
-    namespace property { GENERATE_ENUM_STRING_MAP( FOREACH_PROPERTY ); }
-
-    #undef FOREACH_PROPERTY
-}
-
 class Laser
 {
 public:
@@ -72,8 +43,6 @@ public:
 
     Property* GetProperty( const std::string& name ) const;
     Property* GetProperty( const std::string& name );
-    Property* GetProperty( const laser::property::symbol ) const;
-    Property* GetProperty( const laser::property::symbol );
 
     PropertyIterator GetPropertyIteratorBegin();
     PropertyIterator GetPropertyIteratorEnd();
@@ -108,16 +77,18 @@ protected:
     
 private:
 
-    enum unit_prefix_t { NoPrefix, Milli };
+    static const char* Milliamperes;
+    static const char* Amperes;
+    static const char* Milliwatts;
+    static const char* Watts;
 
     static void DecomposeModelString( std::string modelString, std::vector<std::string>& modelTokens );
 
-    bool HasProperty( const laser::property::symbol ) const;
     bool IsPauseCommandSupported();
 
     void CreateGenericProperties();
 
-    void RegisterProperty( Property* );
+    void RegisterPublicProperty( Property* );
     
     std::map<std::string, cobolt::Property*> properties_;
     
@@ -128,8 +99,11 @@ private:
     double maxCurrentSetpoint_;
     double maxPowerSetpoint_;
 
-    unit_prefix_t currentUnitPrefix_;
-    unit_prefix_t powerUnitPrefix_;
+    std::string currentUnit_;
+    std::string powerUnit_;
+
+    MutableProperty* toggleProperty_;
+    MutableProperty* pausedProperty_;
 };
 
 NAMESPACE_COBOLT_END

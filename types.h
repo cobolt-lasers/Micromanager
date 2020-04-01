@@ -65,6 +65,7 @@ template <> bool CommandResponseValueStringToGuiValueString<double>( std::string
 template <> bool CommandResponseValueStringToGuiValueString<type::analog_impedance::symbol>( std::string& );
 template <> bool CommandResponseValueStringToGuiValueString<type::flag::symbol>( std::string& );
 template <> bool CommandResponseValueStringToGuiValueString<type::run_mode::cc_cp_mod::symbol>( std::string& );
+template <> bool CommandResponseValueStringToGuiValueString<type::toggle::symbol>( std::string& );
 
 /**
  * \brief Specializations of this function reformat GUI value strings into valid command argument strings.
@@ -80,6 +81,7 @@ template <> bool GuiValueStringToCommandArgumentString<double>( std::string& );
 template <> bool GuiValueStringToCommandArgumentString<type::analog_impedance::symbol>( std::string& );
 template <> bool GuiValueStringToCommandArgumentString<type::flag::symbol>( std::string& );
 template <> bool GuiValueStringToCommandArgumentString<type::run_mode::cc_cp_mod::symbol>( std::string& );
+template <> bool GuiValueStringToCommandArgumentString<type::toggle::symbol>( std::string& );
 
 NAMESPACE_COBOLT_END
 

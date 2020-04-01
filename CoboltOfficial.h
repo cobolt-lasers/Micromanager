@@ -78,6 +78,7 @@ private:
     cobolt::Laser* laser_;
 
     bool isInitialized_;
+    bool isBusy_;
     std::string port_;
 };
 

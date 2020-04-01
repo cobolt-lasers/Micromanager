@@ -65,6 +65,7 @@ private:
 CoboltOfficial::CoboltOfficial() :
     laser_( NULL ),
     isInitialized_( false ),
+    isBusy_( false ),
     port_( "None" )
 {
     cobolt::Logger::Instance()->SetupWithGateway( this );
@@ -137,7 +138,7 @@ int CoboltOfficial::Shutdown()
 
 bool CoboltOfficial::Busy()
 {
-    return false;
+    return isBusy_;
 }
 
 void CoboltOfficial::GetName( char* name ) const
@@ -196,6 +197,7 @@ int CoboltOfficial::Fire( double deltaT )
 int CoboltOfficial::SendCommand( const std::string& command, std::string* response )
 {
     int reply = SendSerialCommand( port_.c_str(), command.c_str(), "\r" );
+    CDeviceUtils::SleepMs( 50 );
 
     if ( reply != cobolt::return_code::ok ) {
 
@@ -215,7 +217,7 @@ int CoboltOfficial::SendCommand( const std::string& command, std::string* respon
             reply = cobolt::return_code::unsupported_command;
         }
     }
-
+   
     return reply;
 }
 
@@ -262,13 +264,22 @@ int CoboltOfficial::OnPropertyAction_Laser( MM::PropertyBase* mm_property, MM::A
 
     int returnCode = return_code::ok;
     Property* property = laser_->GetProperty( mm_property->GetName() );
-
+    
     if ( action == MM::BeforeGet ) {
+
         returnCode = property->OnGuiGetAction( adapterProperty );
+
     } else if ( action == MM::AfterSet ) {
-        LogMessage( "CoboltOfficial: Property before update = { " + property->ObjectString() + " }", true );
+    
+        std::string oldValue, newValue;
+        property->FetchAsString( oldValue );
+        adapterProperty.Get( newValue );
+
+        LogMessage( "CoboltOfficial: Property before update = { " + property->ObjectString() + " } with value = '" + oldValue + "'", true );
+
         returnCode = property->OnGuiSetAction( adapterProperty );
-        LogMessage( "CoboltOfficial: Property after update = { " + property->ObjectString() + " }", true );
+        
+        LogMessage( "CoboltOfficial: Property after update = { " + property->ObjectString() + " } with value = '" + newValue + "'", true );
     }
     
     return returnCode;
@@ -288,10 +299,12 @@ MM::PropertyType CoboltOfficial::ResolvePropertyType( const cobolt::Property::St
 
 int CoboltOfficial::ExposeToGui( const Property* property )
 {
+    const std::string initialValue = property->Get<std::string>();
+
     CPropertyAction* action = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_Laser );
     const int returnCode = CreateProperty(
         property->GetName().c_str(),
-        property->Get<std::string>().c_str(),
+        initialValue.c_str(),
         ResolvePropertyType( property->GetStereotype() ),
         !property->IsMutable(),
         action );
@@ -299,7 +312,7 @@ int CoboltOfficial::ExposeToGui( const Property* property )
     if ( returnCode != return_code::ok ) {
         LogMessage( "CoboltOfficial: Failed to expose property { " + property->ObjectString() + " } to GUI.", true );
     } else {
-        LogMessage( "CoboltOfficial: Exposed property { " + property->ObjectString() + " } to GUI.", true );
+        LogMessage( "CoboltOfficial: Exposed property { " + property->ObjectString() + " } to GUI with initial value = '" + initialValue + "'.", true );
     }
 
     return returnCode;

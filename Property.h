@@ -412,6 +412,7 @@ public:
         type::toggle::symbol toggleSymbol = type::toggle::FromString( value );
 
         if ( toggleSymbol == type::toggle::__undefined__ ) {
+            Logger::Instance()->Log( "Failed to resolve toggle symbol from value='" + value +"'", true );
             return return_code::invalid_property_value;
         }
         
