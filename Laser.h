@@ -33,7 +33,6 @@ public:
 
     const std::string& GetName() const;
     const std::string& GetWavelength() const;
-    LaserDevice* GetDevice();
 
     void SetOn( const bool );
     void SetPaused( const bool );
@@ -68,7 +67,7 @@ protected:
 
     void CreateToggleProperty();
     void CreatePausedProperty();
-    void CreateRunModeProperty();
+    void CreateRunModeProperty( const std::vector<StringValueMap>& supportedRunModes );
     void CreateDigitalModulationProperty();
     void CreateAnalogModulationFlagProperty();
 

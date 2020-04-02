@@ -58,7 +58,7 @@ public:
 
     void test_GetProperty_firmware()
     {
-        TS_ASSERT_EQUALS( _someLaser->GetProperty( laser::property::firmware_version )->Get<std::string>(), _physicalLaserMock.firmwareVersion );
+        TS_ASSERT_EQUALS( _someLaser->GetProperty( "Firmware Version" )->Get<std::string>(), _physicalLaserMock.firmwareVersion );
     }
 
     void test_OnGuiSetAction_toggle_on()
@@ -77,7 +77,7 @@ public:
         /// ###
         /// Test
 
-        _someLaser->GetProperty( laser::property::toggle )->OnGuiSetAction( guiProperty );
+        _someLaser->GetProperty( "On-Off Switch" )->OnGuiSetAction( guiProperty );
 
         /// ###
         /// Verify
@@ -96,7 +96,7 @@ public:
         /// ###
         /// Test
 
-        _someLaser->GetProperty( laser::property::toggle )->OnGuiSetAction( guiProperty );
+        _someLaser->GetProperty( "On-Off Switch" )->OnGuiSetAction( guiProperty );
 
         /// ###
         /// Verify

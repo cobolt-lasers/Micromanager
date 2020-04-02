@@ -9,6 +9,8 @@
 #ifndef __COBOLT_H
 #define __COBOLT_H
 
+#include <vector>
+
 #define NAMESPACE_COBOLT_BEGIN namespace cobolt {
 #define NAMESPACE_COBOLT_END   }
 
@@ -47,6 +49,12 @@ namespace return_code
     const int illegal_port_change = 101001;
     const int serial_port_undefined = 101002;
     const int laser_off = 101003;
+}
+
+template <typename T>
+std::vector<T> VectorFromArray( T* array )
+{
+    return std::vector<T>( array, array + sizeof( array ) / sizeof( array[ 0 ] ) );
 }
 
 NAMESPACE_COBOLT_END

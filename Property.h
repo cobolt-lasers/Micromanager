@@ -10,6 +10,7 @@
 #define __COBOLT__PROPERTY_H
 
 #include <string>
+#include <vector>
 
 #include "cobolt.h"
 #include "types.h"
@@ -39,7 +40,7 @@ class GuiEnvironment
 {
 public:
 
-    virtual int RegisterAllowedGuiPropertyValue( const std::string& propertyName, std::string& value ) = 0;
+    virtual int RegisterAllowedGuiPropertyValue( const std::string& propertyName, const std::string& value ) = 0;
     virtual int RegisterAllowedGuiPropertyRange( const std::string& propertyName, double min, double max ) = 0;
 };
 
@@ -177,12 +178,8 @@ protected:
         }
     }
     
-    template <typename T> Stereotype ResolveStereotype() const                              { return String;  } // Default
+    template <typename T> Stereotype ResolveStereotype() const                              { return String;  } // Default // TODO: Do we need these functions?
     template <> Stereotype ResolveStereotype<std::string>() const                           { return String;  }
-    template <> Stereotype ResolveStereotype<type::analog_impedance::symbol>() const        { return String;  }
-    template <> Stereotype ResolveStereotype<type::flag::symbol>() const                    { return String;  }
-    template <> Stereotype ResolveStereotype<type::run_mode::cc_cp_mod::symbol>() const     { return String;  }
-    template <> Stereotype ResolveStereotype<type::toggle::symbol>() const                  { return String;  }
     template <> Stereotype ResolveStereotype<double>() const                                { return Float;   }
     template <> Stereotype ResolveStereotype<int>() const                                   { return Integer; }
 
@@ -199,46 +196,18 @@ class MutableProperty : public Property
 
 public:
 
-    class Constraint
-    {
-    public:
-
-        virtual int ExportToGuiEnvironment( const std::string& propertyName, GuiEnvironment* ) const = 0;
-    };
-
     MutableProperty( const std::string& name ) :
-        Property( name ),
-        constraint_( new NoConstraint() )
+        Property( name )
     {}
 
-    virtual ~MutableProperty()
+    virtual int IntroduceToGuiEnvironment( GuiEnvironment* )
     {
-        if ( constraint_ != NULL ) {
-            delete constraint_;
-        }
-    }
-
-    virtual int IntroduceToGuiEnvironment( GuiEnvironment* environment )
-    {
-        constraint_->ExportToGuiEnvironment( GetName(), environment );
         return return_code::ok;
     }
 
     virtual bool IsMutable() const
     {
         return true;
-    }
-
-    /**
-     * \note Takes ownership of constraint.
-     */
-    void SetupWith( const Constraint* constraint )
-    {
-        if ( constraint_ != NULL ) {
-            delete constraint_;
-        }
-        
-        constraint_ = constraint;
     }
 
     int SetFrom( GuiProperty& guiProperty )
@@ -272,16 +241,12 @@ public:
         return SetFrom( guiProperty );
     }
 
-private:
+protected:
 
-    class NoConstraint : public Constraint
+    virtual bool IsValidValue( const std::string& ) const
     {
-    public:
-
-        virtual int ExportToGuiEnvironment( const std::string&, GuiEnvironment* ) const { return return_code::ok; }
-    };
-
-    const Constraint* constraint_;
+        return true;
+    }
 };
 
 /**
@@ -337,7 +302,6 @@ public:
     {
         int returnCode = laserDevice_->SendCommand( getCommand_, &string );
         if ( returnCode != return_code::ok ) { SetToUnknownValue( string ); return returnCode; }
-        if ( !CommandResponseValueStringToGuiValueString<T>( string ) ) { returnCode = return_code::error; }
         return returnCode;
     }
 
@@ -373,17 +337,12 @@ public:
     {
         int returnCode = laserDevice_->SendCommand( getCommand_, &string );
         if ( returnCode != return_code::ok ) { SetToUnknownValue( string ); return returnCode; }
-        if ( !CommandResponseValueStringToGuiValueString<T>( string ) ) { returnCode = return_code::error; }
         return returnCode;
     }
 
     virtual int Set( const std::string& value )
     {
         std::string argValue = value;
-        
-        if ( !GuiValueStringToCommandArgumentString<T>( argValue ) ) {
-            return return_code::invalid_property_value;
-        }
         
         std::string preparedSetCommand = setCommand_ + " " + argValue;
         return laserDevice_->SendCommand( preparedSetCommand );
@@ -404,59 +363,190 @@ private:
     std::string setCommand_;
 };
 
-class ToggleProperty : public BasicMutableProperty<type::toggle::symbol>
+class EnumerationProperty : public BasicMutableProperty<std::string>
 {
-public:
+    typedef BasicMutableProperty<std::string> Parent;
 
-    ToggleProperty( const std::string& name, LaserDevice* laserDevice, const std::string& getCommand, const std::string& onCommand, const std::string& offCommand ) :
-        BasicMutableProperty<type::toggle::symbol>( name, laserDevice, getCommand, "N/A" ),
-        onCommand_( onCommand ),
-        offCommand_( offCommand )
+public:
+    
+    EnumerationProperty( const std::string& name, LaserDevice* laserDevice, const std::string& getCommand, const std::string& setCommand ) :
+        BasicMutableProperty<std::string>( name, laserDevice, getCommand, setCommand )
     {}
 
-    virtual int Set( const std::string& value )
+    virtual int IntroduceToGuiEnvironment( GuiEnvironment* environment )
     {
-        type::toggle::symbol toggleSymbol = type::toggle::FromString( value );
+        for ( valid_values_t::const_iterator validValue = validValues_.begin();
+              validValue != validValues_.end(); validValue++ ) {
 
-        if ( toggleSymbol == type::toggle::__undefined__ ) {
-            Logger::Instance()->Log( "Failed to resolve toggle symbol from value='" + value +"'", true );
-            return return_code::invalid_property_value;
-        }
-        
-        switch ( toggleSymbol ) {
+            const int returnCode = environment->RegisterAllowedGuiPropertyValue( GetName(), validValue->guiValue );
+            if ( returnCode != return_code::ok ) {
+                return returnCode;
+            }
 
-            case type::toggle::on:  return laserDevice_->SendCommand( onCommand_ );
-            case type::toggle::off: return laserDevice_->SendCommand( offCommand_ );
+            Logger::Instance()->Log( "EnumerationProperty::IntroduceToGuiEnvironment(): Registered valid value '" +
+                validValue->guiValue + "' for property '" + GetName() + "'.", true );
         }
+
+        return return_code::ok;
+    }
+
+    void RegisterValidValue( const StringValueMap& validValue )
+    {
+        validValues_.push_back( validValue );
+    }
+
+    virtual int FetchAsString( std::string& string ) const
+    {
+        std::string commandValue;
+        Parent::FetchAsString( commandValue );
+
+        for ( valid_values_t::const_iterator validValue = validValues_.begin();
+              validValue != validValues_.end(); validValue++ ) {
+
+            if ( commandValue == validValue->commandValue ) {
+                string = validValue->guiValue;
+                return return_code::ok;
+            }
+        }
+
+        string = "Invalid Value";
         
         return return_code::error;
     }
 
-    virtual std::string ObjectString() const
+    virtual int Set( const std::string& guiValue )
     {
-        return BasicMutableProperty<type::toggle::symbol>::ObjectString() + ( "onCommand_ = " + onCommand_ + "; offCommand_ = " + offCommand_ + "; " );
+        for ( valid_values_t::const_iterator validValue = validValues_.begin();
+            validValue != validValues_.end(); validValue++ ) {
+
+            if ( guiValue == validValue->guiValue ) {
+                
+                Parent::Set( validValue->commandValue );
+                return return_code::ok;
+            }
+        }
+        
+        Logger::Instance()->Log( "EnumerationProperty::Set(): Failed to interpret gui value '" + guiValue + "'", true );
+        return return_code::error;
+    }
+
+protected:
+
+    virtual bool IsValidValue( const std::string& value ) const
+    {
+        for ( valid_values_t::const_iterator validValue = validValues_.begin();
+            validValue != validValues_.end(); validValue++ ) {
+
+            // We interpret both the GUI and the command value as valid values:
+            if ( validValue->guiValue == value || validValue->commandValue == value ) {
+                return true;
+            }
+        }
+        
+        return false;
     }
 
 private:
 
-    std::string onCommand_;
-    std::string offCommand_;
+    typedef std::vector<StringValueMap> valid_values_t;
+
+    valid_values_t validValues_;
 };
 
-class LaserPausedProperty : public ToggleProperty
+template <typename T>
+class NumericProperty : public BasicMutableProperty<T>
 {
-    typedef ToggleProperty Parent;
+public:
+
+    NumericProperty( const std::string& name, LaserDevice* laserDevice, const std::string& getCommand, const std::string& setCommand, const T min, const T max ) :
+        BasicMutableProperty<T>( name, laserDevice, getCommand, setCommand ),
+        min_( min ),
+        max_( max )
+    {}
+
+    virtual int IntroduceToGuiEnvironment( GuiEnvironment* environment )
+    {
+        return environment->RegisterAllowedGuiPropertyRange( GetName(), min_, max_ );
+    }
+
+protected:
+
+    virtual bool IsValidValue( const std::string& value ) const
+    {
+        T numericValue = (T) atof( value.c_str() );
+        return ( min_ <= numericValue && numericValue <= max_ );
+    }
+
+private:
+
+    T min_;
+    T max_;
+};
+
+class BoolProperty : public EnumerationProperty
+{
+public:
+
+    enum stereotype_t { EnableDisable, OnOff };
+
+    BoolProperty( const std::string& name, LaserDevice* laserDevice,
+                  const stereotype_t stereotype, const std::string& getCommand,
+                  const std::string& setTrueCommand, const std::string& setFalseCommand ) :
+        EnumerationProperty( name, laserDevice, getCommand, "N/A" ),
+        setTrueCommand_( setTrueCommand ),
+        setFalseCommand_( setFalseCommand )
+    {
+        if ( stereotype == OnOff ) {
+
+            RegisterValidValue( value::toggle::on );
+            RegisterValidValue( value::toggle::off );
+
+        } else {
+
+            RegisterValidValue( value::flag::enable );
+            RegisterValidValue( value::flag::disable );
+        }
+    }
+
+    virtual int Set( const std::string& value )
+    {
+        if ( !IsValidValue( value ) ) {
+            Logger::Instance()->Log( "Invalid value '" + value + "'", true );
+            return return_code::invalid_property_value;
+        }
+
+        if ( value == value::toggle::on ) {
+            return laserDevice_->SendCommand( setTrueCommand_ );
+        } else {
+            return laserDevice_->SendCommand( setFalseCommand_ );
+        }
+    }
+
+    virtual std::string ObjectString() const
+    {
+        return BasicMutableProperty<std::string>::ObjectString() + ( "setTrueCommand_ = " + setTrueCommand_ + "; setFalseCommand_ = " + setFalseCommand_ + "; " );
+    }
+
+private:
+
+    std::string setTrueCommand_;
+    std::string setFalseCommand_;
+};
+
+class LaserPausedProperty : public BoolProperty
+{
+    typedef BoolProperty Parent;
 
 public:
 
     LaserPausedProperty( const std::string& name, LaserDevice* laserDevice ) :
-        ToggleProperty( name, laserDevice, "N/A", "l1r", "l0r" ),
-        toggle_( type::toggle::ToString( type::toggle::off ) )
+        BoolProperty( name, laserDevice, BoolProperty::OnOff, "N/A", "l1r", "l0r" ),
+        guiValue_( value::toggle::off.guiValue )
     {}
     
     virtual int FetchAsString( std::string& string ) const
     {
-        string = toggle_;
+        string = guiValue_;
         return return_code::ok;
     }
 
@@ -465,7 +555,7 @@ public:
         const int returnCode = Parent::Set( value );
 
         if ( returnCode == return_code::ok ) {
-            toggle_ = value;
+            guiValue_ = value;
         }
         
         return returnCode;
@@ -473,58 +563,72 @@ public:
 
     virtual std::string ObjectString() const
     {
-        return BasicMutableProperty<type::toggle::symbol>::ObjectString() + ( "toggle_ = " + toggle_ + "; " );
+        return BoolProperty::ObjectString() + ( "guiValue_ = " + guiValue_ + "; " );
     }
 
 private:
 
-    std::string toggle_;
+    std::string guiValue_;
 };
 
-class LaserSimulatedPausedProperty : public BasicMutableProperty<type::toggle::symbol>
+class LaserSimulatedPausedProperty : public EnumerationProperty
 {
 public:
-    
-    LaserSimulatedPausedProperty( const std::string& name, Laser* laser );
+
+    LaserSimulatedPausedProperty( const std::string& name, LaserDevice* laserDevice );
+    virtual ~LaserSimulatedPausedProperty();
 
     virtual int FetchAsString( std::string& string ) const
     {
-        string = toggle_;
+        if ( IsPaused() ) {
+            string = value::toggle::on.guiValue;
+        } else {
+            string = value::toggle::off.guiValue;
+        }
+        
         return return_code::ok;
     }
 
     virtual int Set( const std::string& value )
     {
-        type::toggle::symbol toggleSymbol = type::toggle::FromString( value );
-
-        if ( toggleSymbol == type::toggle::__undefined__ ) {
+        if ( !IsValidValue( value ) ) {
+            Logger::Instance()->Log( "Invalid value '" + value + "'", true );
             return return_code::invalid_property_value;
         }
-
-        if ( value == toggle_ ) {
-            return return_code::ok;
-        }
-
+        
         int returnCode = return_code::ok;
-        switch ( toggleSymbol ) {
 
-            // TODO NOW: Save and load laser state
+        if ( value == value::toggle::on && !IsPaused() ) {
 
-            case type::toggle::on:
-                returnCode = laserDevice_->SendCommand( "cc" );
-                if ( returnCode == return_code::ok ) {
-                    returnCode = laserDevice_->SendCommand( "slc 0" );
-                }
-                break;
+            savedLaserState_ = new LaserState();
 
-            case type::toggle::off:
-                returnCode = laserDevice_->SendCommand( "cc" );
-                if ( returnCode == return_code::ok ) {
-                    returnCode = laserDevice_->SendCommand( "slc 0" );
-                }
-                break;
+            if ( laserDevice_->SendCommand( "glc?", &savedLaserState_->currentSetpoint ) != return_code::ok ||
+                 laserDevice_->SendCommand( "gam?", &savedLaserState_->runMode ) != return_code::ok ) {
+
+                Logger::Instance()->Log( "LaserSimulatedPausedProperty::Set(): Failed to save laser state.", true );
+                return return_code::error;
+            }
+
+            returnCode = laserDevice_->SendCommand( "cc" );
+            if ( returnCode == return_code::ok ) {
+                returnCode = laserDevice_->SendCommand( "slc 0" );
+            }
+
+        } else if ( IsPaused() ) {
+
+            returnCode = laserDevice_->SendCommand( "sam " + savedLaserState_->runMode );
+            if ( returnCode == return_code::ok ) {
+                returnCode = laserDevice_->SendCommand( "slc " +savedLaserState_->currentSetpoint );
+            }
+            
+            delete savedLaserState_;
+            savedLaserState_ = NULL;
+
+        } else {
+            
+            Logger::Instance()->Log( "LaserSimulatedPausedProperty::Set(): Ignored request as requested pause state is already set.", true );
         }
-
+        
         return returnCode;
     }
     
@@ -532,76 +636,16 @@ private:
 
     struct LaserState
     {
-        std::string runMode_;
-        std::string a;
+        std::string runMode;
+        std::string currentSetpoint;
     };
 
-    Laser* laser_;
-    std::string toggle_;
-};
-
-template <typename _EnumType>
-class EnumConstraint : public MutableProperty::Constraint
-{
-public:
-
-    EnumConstraint( std::string* validValues, const int count ) :
-        validValues_( validValues ),
-        count_( count )
-    {}
-
-    virtual int ExportToGuiEnvironment( const std::string& propertyName, GuiEnvironment* environment ) const
+    bool IsPaused() const
     {
-        for ( int i = 0; i < count_; i++ ) {
-            const int returnCode = environment->RegisterAllowedGuiPropertyValue( propertyName, validValues_[ i ] );
-            if ( returnCode != return_code::ok ) {
-                return returnCode;
-            }
-            
-            Logger::Instance()->Log( "Exported enum constraint value '" + validValues_[ i ] + "' for property '" + propertyName + "' to GUI.", true );
-        }
-        
-        return return_code::ok;
+        return ( savedLaserState_ != NULL );
     }
 
-private:
-
-    std::string* validValues_;
-    int count_;
-};
-
-class RangeConstraint : public MutableProperty::Constraint
-{
-public:
-
-    RangeConstraint( double min, const double max ) :
-        min_( min ),
-        max_( max )
-    {}
-    
-    virtual int ExportToGuiEnvironment( const std::string& propertyName, GuiEnvironment* environment ) const
-    {
-        const int returnCode = environment->RegisterAllowedGuiPropertyRange( propertyName, min_, max_ );
-        
-        if ( returnCode == return_code::ok ) {
-            Logger::Instance()->Log( "Exported range constraint { " +
-                std::to_string( (long double) min_ ) + ", " +
-                std::to_string( (long double) max_ ) +
-                " } for property '" + propertyName + "' to GUI.", true );
-        } else {
-            Logger::Instance()->Log( "Failed to export range constraint { " +
-                std::to_string( (long double) min_ ) + ", " +
-                std::to_string( (long double) max_ ) +
-                " } for property '" + propertyName + "' to GUI.", true );
-        }
-
-        return returnCode;
-    }
-
-private:
-
-    double min_;
-    double max_;
+    LaserState* savedLaserState_;
 };
 
 NAMESPACE_COBOLT_END

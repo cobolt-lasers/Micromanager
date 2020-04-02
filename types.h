@@ -18,70 +18,48 @@
 
 NAMESPACE_COBOLT_BEGIN
 
-namespace type
+/**
+ * \brief Maps the value accepted by a command and the corresponding value as seen in and received from the GUI.
+ */
+struct StringValueMap
 {
-     #define FOREACH_ANALOG_IMPEDANCE_VALUE( GENERATOR ) \
-        GENERATOR( high,    0,  "1 kOhm" ) \
-        GENERATOR( low,     1,  "50 Ohm" )
-    namespace analog_impedance { GENERATE_ENUM_STRING_MAP( FOREACH_ANALOG_IMPEDANCE_VALUE ); }
-    #undef FOREACH_ANALOG_IMPEDANCE_VALUE
-    
-    #define FOREACH_FLAG_VALUE( GENERATOR ) \
-        GENERATOR( disabled,    0,  "Disabled" ) \
-        GENERATOR( enabled,     1,  "Enabled" )
-    namespace flag { GENERATE_ENUM_STRING_MAP( FOREACH_FLAG_VALUE ); }
-    #undef FOREACH_FLAG_VALUE
-    
-    namespace run_mode
-    {
-        #define FOREACH_RUN_MODE_VALUE( GENERATOR ) \
-            GENERATOR( constant_current, 0,   "Constant Current" ) \
-            GENERATOR( constant_power,   1,   "Constant Power" ) \
-            GENERATOR( modulation,       2,   "Modulation" )
-        namespace cc_cp_mod { GENERATE_ENUM_STRING_MAP( FOREACH_RUN_MODE_VALUE ); }
-        #undef FOREACH_RUN_MODE_VALUE
-    }
+    std::string commandValue;   // Value accepted by laser serial interface.
+    std::string guiValue;       // Value as seen in the GUI.
+};
 
-    #define FOREACH_TOGGLE_VALUE( GENERATOR ) \
-        GENERATOR( off, 0,  "Off" ) \
-        GENERATOR( on,  1,  "On" )
-    namespace toggle { GENERATE_ENUM_STRING_MAP( FOREACH_TOGGLE_VALUE ); }
-    #undef FOREACH_TOGGLE_VALUE
+inline bool operator == ( const std::string& lhs, const StringValueMap& rhs )
+{
+    return ( lhs == rhs.guiValue || lhs == rhs.commandValue );
 }
 
-/**
- * \brief Specializations of this function reformat strings received from get command executions into
- *        corresponding value strings to be shown in the GUI.
- *
- * \example The result of a get run mode command is a number that the proper specialization of this
- *          function will translate into a string intended for GUI presentation, thus a command response
- *          saying '1' would be translated into, for example, "Constant Power".
- */
-template <typename T>
-bool CommandResponseValueStringToGuiValueString( std::string& ) { return false; }
+inline bool operator != ( const std::string& lhs, const StringValueMap& rhs )
+{
+    return !( lhs != rhs );
+}
 
-template <> bool CommandResponseValueStringToGuiValueString<std::string>( std::string& );
-template <> bool CommandResponseValueStringToGuiValueString<double>( std::string& );
-template <> bool CommandResponseValueStringToGuiValueString<type::analog_impedance::symbol>( std::string& );
-template <> bool CommandResponseValueStringToGuiValueString<type::flag::symbol>( std::string& );
-template <> bool CommandResponseValueStringToGuiValueString<type::run_mode::cc_cp_mod::symbol>( std::string& );
-template <> bool CommandResponseValueStringToGuiValueString<type::toggle::symbol>( std::string& );
+namespace value // TODO: Move somewhere?
+{
+    namespace analog_impedance
+    {
+        extern StringValueMap high;
+        extern StringValueMap low;
+        extern const StringValueMap* values[]; // TODO: Do we need this?
+    }
 
-/**
- * \brief Specializations of this function reformat GUI value strings into valid command argument strings.
- *
- * \example If run mode in gui is set to "Constant Power" then running the right specialization here will
- *          translate that into the corresponding run mode number.
- */
-template <typename T>
-bool GuiValueStringToCommandArgumentString( std::string& ) { return false; }
+    namespace flag
+    {
+        extern StringValueMap enable;
+        extern StringValueMap disable;
+        extern const StringValueMap* values[];
+    }
 
-template <> bool GuiValueStringToCommandArgumentString<std::string>( std::string& );
-template <> bool GuiValueStringToCommandArgumentString<double>( std::string& );
-template <> bool GuiValueStringToCommandArgumentString<type::analog_impedance::symbol>( std::string& );
-template <> bool GuiValueStringToCommandArgumentString<type::flag::symbol>( std::string& );
-template <> bool GuiValueStringToCommandArgumentString<type::run_mode::cc_cp_mod::symbol>( std::string& );
-template <> bool GuiValueStringToCommandArgumentString<type::toggle::symbol>( std::string& );
+    namespace toggle
+    {
+        extern StringValueMap on;
+        extern StringValueMap off;
+        extern const StringValueMap* values[];
+    }
+}
 
 NAMESPACE_COBOLT_END
 

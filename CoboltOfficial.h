@@ -61,7 +61,7 @@ public:
     /// ###
     /// GuiEnvironment API
 
-    virtual int RegisterAllowedGuiPropertyValue( const std::string& propertyName, std::string& value );
+    virtual int RegisterAllowedGuiPropertyValue( const std::string& propertyName, const std::string& value );
     virtual int RegisterAllowedGuiPropertyRange( const std::string& propertyName, double min, double max );
 
     /// ###

@@ -235,7 +235,7 @@ void CoboltOfficial::SendLogMessage( const char* message, bool debug ) const
     LogMessage( message, debug );
 }
 
-int CoboltOfficial::RegisterAllowedGuiPropertyValue( const std::string& propertyName, std::string& value )
+int CoboltOfficial::RegisterAllowedGuiPropertyValue( const std::string& propertyName, const std::string& value )
 {
     return AddAllowedValue( propertyName.c_str(), value.c_str() );
 }

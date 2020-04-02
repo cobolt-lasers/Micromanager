@@ -35,6 +35,12 @@ Laser* Laser::Create( LaserDevice* device )
 
         laser = new Laser( "06-DPL", device );
 
+        StringValueMap runModes[] = {
+            { "0", "Constant Current" },
+            { "1", "Constant Power" },
+            { "2", "Modulation" }
+        };
+
         laser->currentUnit_ = Milliamperes; 
         laser->powerUnit_ = Milliwatts;
         laser->maxCurrentSetpoint_ = 3.0f;
@@ -52,7 +58,7 @@ Laser* Laser::Create( LaserDevice* device )
         laser->CreatePowerReadingProperty();
         laser->CreateToggleProperty();
         laser->CreatePausedProperty();
-        laser->CreateRunModeProperty();
+        laser->CreateRunModeProperty( VectorFromArray( runModes ) );
         laser->CreateDigitalModulationProperty();
         laser->CreateAnalogModulationFlagProperty();
         laser->CreateModulationPowerSetpointProperty();
@@ -61,6 +67,12 @@ Laser* Laser::Create( LaserDevice* device )
     } else if ( modelString.find( "-05-" ) != std::string::npos ) {
 
         laser = new Laser( "Compact 05", device );
+
+        StringValueMap runModes[] = {
+            { "0", "Constant Current" },
+            { "1", "Constant Power" },
+            { "2", "Modulation" }
+        };
 
         laser->currentUnit_ = Amperes;
         laser->powerUnit_ = Milliwatts;
@@ -79,7 +91,7 @@ Laser* Laser::Create( LaserDevice* device )
         laser->CreatePowerReadingProperty();
         laser->CreateToggleProperty();
         laser->CreatePausedProperty();
-        laser->CreateRunModeProperty();
+        laser->CreateRunModeProperty( VectorFromArray( runModes ) );
         
     } else {
 
@@ -122,29 +134,24 @@ const std::string& Laser::GetWavelength() const
     return wavelength_;
 }
 
-LaserDevice* Laser::GetDevice()
-{
-    return device_;
-}
-
 void Laser::SetOn( const bool on )
 {
-    toggleProperty_->Set( type::toggle::ToString( ( on ? type::toggle::on : type::toggle::off )  ) );
+    toggleProperty_->Set( ( on ? value::toggle::on.guiValue : value::toggle::off.guiValue ) );
 }
 
 void Laser::SetPaused( const bool paused )
 {
-    pausedProperty_->Set( type::toggle::ToString( ( paused ? type::toggle::on : type::toggle::off ) ) ); 
+    pausedProperty_->Set( ( paused ? value::toggle::on.guiValue : value::toggle::off.guiValue ) );
 }
 
 bool Laser::IsOn() const
 {
-    return ( type::toggle::FromString( toggleProperty_->Get<std::string>() ) == type::toggle::on );
+    return ( toggleProperty_->Get<std::string>() == value::toggle::on.guiValue );
 }
 
 bool Laser::IsPaused() const
 {
-    return ( type::toggle::FromString( pausedProperty_->Get<std::string>() ) == type::toggle::on );
+    return ( pausedProperty_->Get<std::string>() == value::toggle::on.guiValue );
 }
 
 Property* Laser::GetProperty( const std::string& name ) const
@@ -247,8 +254,7 @@ void Laser::CreateOperatingHoursProperty()
 
 void Laser::CreateCurrentSetpointProperty()
 {
-    MutableProperty* property = new BasicMutableProperty<double>( "Current Setpoint [" + currentUnit_ + "]", device_, "glc?", "slc" );
-    property->SetupWith( new RangeConstraint( 0.0f, maxCurrentSetpoint_ ) );
+    MutableProperty* property = new NumericProperty<double>( "Current Setpoint [" + currentUnit_ + "]", device_, "glc?", "slc", 0.0f, maxCurrentSetpoint_ );
     RegisterPublicProperty( property );
 }
 
@@ -259,8 +265,7 @@ void Laser::CreateCurrentReadingProperty()
 
 void Laser::CreatePowerSetpointProperty()
 {
-    MutableProperty* property = new BasicMutableProperty<double>( "Power Setpoint [" + powerUnit_ + "]", device_, "glp?", "slp" );
-    property->SetupWith( new RangeConstraint( 0.0f, maxPowerSetpoint_ ) );
+    MutableProperty* property = new NumericProperty<double>( "Power Setpoint [" + powerUnit_ + "]", device_, "glp?", "slp", 0.0f, maxPowerSetpoint_ );
     RegisterPublicProperty( property );
 }
 
@@ -271,8 +276,7 @@ void Laser::CreatePowerReadingProperty()
 
 void Laser::CreateToggleProperty()
 {
-    toggleProperty_ = new ToggleProperty( "On-Off Switch", device_, "l?", "l1", "l0" );
-    toggleProperty_->SetupWith( new EnumConstraint<type::toggle::symbol>( type::toggle::symbol_strings, type::toggle::__count__ ) );
+    toggleProperty_ = new BoolProperty( "On-Off Switch", device_, BoolProperty::OnOff, "l?", "l1", "l0" );
     RegisterPublicProperty( toggleProperty_ );
 }
 
@@ -281,31 +285,33 @@ void Laser::CreatePausedProperty()
     if ( IsPauseCommandSupported() ) {
         pausedProperty_ = new LaserPausedProperty( "Paused", device_ );
     } else {
-        pausedProperty_ = new LaserSimulatedPausedProperty( "Paused", this );
+        pausedProperty_ = new LaserSimulatedPausedProperty( "Paused", device_ );
     }
     
-    pausedProperty_->SetupWith( new EnumConstraint<type::toggle::symbol>( type::toggle::symbol_strings, type::toggle::__count__ ) );
-    RegisterPublicProperty( pausedProperty_ ); // TODO: Consider removing as this property should not be public.
+    RegisterPublicProperty( pausedProperty_ ); // TODO: Consider removing as this property should not be public?
 }
 
-void Laser::CreateRunModeProperty()
+void Laser::CreateRunModeProperty( const std::vector<StringValueMap>& supportedRunModes )
 {
-    MutableProperty* property = new BasicMutableProperty<type::run_mode::cc_cp_mod::symbol>( "Run Mode", device_, "gam?", "sam" );
-    property->SetupWith( new EnumConstraint<type::run_mode::cc_cp_mod::symbol>( type::run_mode::cc_cp_mod::symbol_strings, type::run_mode::cc_cp_mod::__count__ ) );
+    EnumerationProperty* property = new EnumerationProperty( "Run Mode", device_, "gam?", "sam" );
+
+    for ( std::vector<StringValueMap>::const_iterator supportedRunMode = supportedRunModes.begin();
+        supportedRunMode != supportedRunModes.end(); supportedRunMode++ ) {
+        property->RegisterValidValue( *supportedRunMode );
+    }
+
     RegisterPublicProperty( property );
 }
 
 void Laser::CreateDigitalModulationProperty()
 {
-    MutableProperty* property = new BasicMutableProperty<type::flag::symbol>( "Digital Modulation", device_, "gdmes?", "sdmes" );
-    property->SetupWith( new EnumConstraint<type::flag::symbol>( type::flag::symbol_strings, type::flag::__count__ ) );
+    MutableProperty* property = new BoolProperty( "Digital Modulation", device_, BoolProperty::EnableDisable, "gdmes?", "sdmes 1", "sdmes 0" );
     RegisterPublicProperty( property );
 }
 
 void Laser::CreateAnalogModulationFlagProperty()
 {
-    MutableProperty* property = new BasicMutableProperty<type::flag::symbol>( "Analog Modulation", device_, "games?", "sames" );
-    property->SetupWith( new EnumConstraint<type::flag::symbol>( type::flag::symbol_strings, type::flag::__count__ ) );
+    MutableProperty* property = new BoolProperty( "Analog Modulation", device_, BoolProperty::EnableDisable, "games?", "sames 1", "sames 0" );
     RegisterPublicProperty( property );
 }
 
@@ -316,8 +322,11 @@ void Laser::CreateModulationPowerSetpointProperty()
 
 void Laser::CreateAnalogImpedanceProperty()
 {
-    MutableProperty* property = new BasicMutableProperty<type::analog_impedance::symbol>( "Analog Impedance", device_, "galis?", "salis" );
-    property->SetupWith( new EnumConstraint<type::flag::symbol>( type::analog_impedance::symbol_strings, type::analog_impedance::__count__ ) );
+    EnumerationProperty* property = new EnumerationProperty( "Analog Impedance", device_, "galis?", "salis" );
+    
+    property->RegisterValidValue( value::analog_impedance::low );
+    property->RegisterValidValue( value::analog_impedance::high );
+
     RegisterPublicProperty( property );
 }
 
@@ -326,7 +335,7 @@ bool Laser::IsPauseCommandSupported()
     std::string response;
     device_->SendCommand( "l0r", &response );
     
-    return ( response.find( "Syntax error" ) == std::string::npos );
+    return ( response.find( "OK" ) != std::string::npos );
 }
 
 void Laser::RegisterPublicProperty( Property* property )
