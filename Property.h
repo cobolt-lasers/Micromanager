@@ -103,14 +103,14 @@ public:
 
     virtual int OnGuiSetAction( GuiProperty& )
     {
-        Logger::Instance()->Log( "Ignoring 'set' action on read-only property.", true );
+        Logger::Instance()->LogMessage( "Property[" + GetName() + "]::OnGuiSetAction(): Ignoring 'set' action on read-only property.", true );
         return return_code::ok;
     }
 
     virtual int OnGuiGetAction( GuiProperty& guiProperty )
     {
         std::string string;
-        int returnCode = FetchAsString( string );
+        int returnCode = CachedFetchAsString( string );
 
         if ( returnCode != return_code::ok ) {
 
@@ -131,7 +131,7 @@ public:
     template <> double Get() const
     {
         std::string string;
-        const int returnCode = FetchAsString( string );
+        const int returnCode = CachedFetchAsString( string );
         
         if ( returnCode != return_code::ok ) {
             return 0.0f;
@@ -143,7 +143,7 @@ public:
     template <> std::string Get() const
     {
         std::string string;
-        const int returnCode = FetchAsString( string );
+        const int returnCode = CachedFetchAsString( string );
 
         if ( returnCode != return_code::ok ) {
             SetToUnknownValue( string );
@@ -183,9 +183,32 @@ protected:
     template <> Stereotype ResolveStereotype<double>() const                                { return Float;   }
     template <> Stereotype ResolveStereotype<int>() const                                   { return Integer; }
 
+    void ClearCachedValue() const
+    {
+        cachedValue_.clear();
+    }
+
 private:
 
+    int CachedFetchAsString( std::string& string ) const
+    {
+        int returnCode = return_code::ok;
+
+        if ( cachedValue_.length() == 0 ) {
+            returnCode = FetchAsString( cachedValue_ );
+        }
+        
+        if ( returnCode == return_code::ok ) {
+            string = cachedValue_;
+        } else {
+            ClearCachedValue();
+        }
+        
+        return returnCode;
+    }
+
     std::string name_;
+    mutable std::string cachedValue_;
 
     FetchValueModifier* fetchValueModifier_;
 };
@@ -216,18 +239,20 @@ public:
 
         guiProperty.Get( value );
         
-        Logger::Instance()->Log( "Attempting to set property '" + GetName() + "' to value=" + value, true );
-
+        Logger::Instance()->LogMessage( "MutableProperty[" + GetName() + "]::SetFrom( GuiProperty( '" + value + "' ) )", true );
+        
         const int returnCode = Set( value );
-
+        
         if ( returnCode != return_code::ok ) {
 
-            Logger::Instance()->Log( "Failed set property '" + GetName() + "'", true );
+            Logger::Instance()->LogError( "MutableProperty[" + GetName() + "]::SetFrom( GuiProperty( '" + value + "' ) ): Failed" );
             SetToUnknownValue( guiProperty );
             return returnCode;
         }
 
-        Logger::Instance()->Log( "Successfully set property '" + GetName() + "' to value=" + Get<std::string>(), true );
+        ClearCachedValue();
+
+        Logger::Instance()->LogMessage( "MutableProperty[" + GetName() + "]::SetFrom( GuiProperty( '" + value + "' ) ): Succeeded", true );
 
         guiProperty.Set( value );
 
@@ -383,8 +408,8 @@ public:
                 return returnCode;
             }
 
-            Logger::Instance()->Log( "EnumerationProperty::IntroduceToGuiEnvironment(): Registered valid value '" +
-                validValue->guiValue + "' for property '" + GetName() + "'.", true );
+            Logger::Instance()->LogMessage( "EnumerationProperty[ " + GetName() + " ]::IntroduceToGuiEnvironment(): Registered valid value '" +
+                validValue->guiValue + "' in GUI.", true );
         }
 
         return return_code::ok;
@@ -392,6 +417,8 @@ public:
 
     void RegisterValidValue( const StringValueMap& validValue )
     {
+        Logger::Instance()->LogMessage( "EnumerationProperty[ " + GetName() + " ]::RegisterValidValue( { '" +
+            validValue.commandValue + "', '" + validValue.guiValue + "' } )", true );
         validValues_.push_back( validValue );
     }
 
@@ -410,7 +437,7 @@ public:
         }
 
         string = "Invalid Value";
-        
+        Logger::Instance()->LogError( "EnumerationProperty[" + GetName() + "]::FetchAsString( ... ): No matching GUI value found for command value '" + commandValue + "'" );
         return return_code::error;
     }
 
@@ -426,7 +453,7 @@ public:
             }
         }
         
-        Logger::Instance()->Log( "EnumerationProperty::Set(): Failed to interpret gui value '" + guiValue + "'", true );
+        Logger::Instance()->LogError( "EnumerationProperty[ " + GetName() + " ]::Set(): Failed to interpret gui value '" + guiValue + "'" );
         return return_code::error;
     }
 
@@ -511,7 +538,7 @@ public:
     virtual int Set( const std::string& value )
     {
         if ( !IsValidValue( value ) ) {
-            Logger::Instance()->Log( "Invalid value '" + value + "'", true );
+            Logger::Instance()->LogError( "BoolProperty[ " + GetName() + " ]::Set( '" + value + "' ): Invalid value" );
             return return_code::invalid_property_value;
         }
 
@@ -592,7 +619,7 @@ public:
     virtual int Set( const std::string& value )
     {
         if ( !IsValidValue( value ) ) {
-            Logger::Instance()->Log( "Invalid value '" + value + "'", true );
+            Logger::Instance()->LogError( "LaserSimulatedPausedProperty[ " + GetName() + " ]::Set( '" + value + "' ): Invalid value" );
             return return_code::invalid_property_value;
         }
         
@@ -605,13 +632,13 @@ public:
             if ( laserDevice_->SendCommand( "glc?", &savedLaserState_->currentSetpoint ) != return_code::ok ||
                  laserDevice_->SendCommand( "gam?", &savedLaserState_->runMode ) != return_code::ok ) {
 
-                Logger::Instance()->Log( "LaserSimulatedPausedProperty::Set(): Failed to save laser state.", true );
+                Logger::Instance()->LogError( "LaserSimulatedPausedProperty[ " + GetName() + " ]::Set( '" + value + "' ): Failed to save laser state" );
                 return return_code::error;
             }
 
-            returnCode = laserDevice_->SendCommand( "cc" );
+            returnCode = laserDevice_->SendCommand( "ecc" );
             if ( returnCode == return_code::ok ) {
-                returnCode = laserDevice_->SendCommand( "slc 0" );
+                returnCode = laserDevice_->SendCommand( "slc 0.1" ); // TODO: Set to 0 (0.1 is for compact 05 that currently does not work with slc 0)
             }
 
         } else if ( IsPaused() ) {
@@ -626,7 +653,7 @@ public:
 
         } else {
             
-            Logger::Instance()->Log( "LaserSimulatedPausedProperty::Set(): Ignored request as requested pause state is already set.", true );
+            Logger::Instance()->LogMessage( "LaserSimulatedPausedProperty[" + GetName() + "]::Set( '" + value + "' ): Ignored request as requested state is already set", true );
         }
         
         return returnCode;

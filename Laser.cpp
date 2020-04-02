@@ -10,6 +10,8 @@
 #include "Laser.h"
 #include "Property.h"
 
+#define ArrayEnd( arr ) (arr + sizeof( arr ) / sizeof( arr[ 0 ] ) )
+
 using namespace std;
 using namespace cobolt;
 
@@ -58,7 +60,7 @@ Laser* Laser::Create( LaserDevice* device )
         laser->CreatePowerReadingProperty();
         laser->CreateToggleProperty();
         laser->CreatePausedProperty();
-        laser->CreateRunModeProperty( VectorFromArray( runModes ) );
+        laser->CreateRunModeProperty( std::vector<StringValueMap>( runModes, ArrayEnd( runModes ) ) );
         laser->CreateDigitalModulationProperty();
         laser->CreateAnalogModulationFlagProperty();
         laser->CreateModulationPowerSetpointProperty();
@@ -70,8 +72,7 @@ Laser* Laser::Create( LaserDevice* device )
 
         StringValueMap runModes[] = {
             { "0", "Constant Current" },
-            { "1", "Constant Power" },
-            { "2", "Modulation" }
+            { "1", "Constant Power" }
         };
 
         laser->currentUnit_ = Amperes;
@@ -91,7 +92,7 @@ Laser* Laser::Create( LaserDevice* device )
         laser->CreatePowerReadingProperty();
         laser->CreateToggleProperty();
         laser->CreatePausedProperty();
-        laser->CreateRunModeProperty( VectorFromArray( runModes ) );
+        laser->CreateRunModeProperty( std::vector<StringValueMap>( runModes, ArrayEnd( runModes ) ) );
         
     } else {
 
@@ -104,7 +105,7 @@ Laser* Laser::Create( LaserDevice* device )
         laser->wavelength_ = "Unknown";
     }
     
-    Logger::Instance()->Log( "Created laser '" + laser->GetName() + "'", true );
+    Logger::Instance()->LogMessage( "Created laser '" + laser->GetName() + "'", true );
 
     return laser;
 }

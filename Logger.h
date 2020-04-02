@@ -32,14 +32,23 @@ public:
     {
         gateway_ = gateway;
     }
-
-    virtual void Log( const std::string& message, bool debug ) const
+    
+    virtual void LogMessage( const std::string& message, bool debug ) const
     {
         if ( gateway_ == NULL ) {
             return;
         }
         
         gateway_->SendLogMessage( ("" + message).c_str(), debug );
+    }
+
+    virtual void LogError( const std::string& message ) const
+    {
+        if ( gateway_ == NULL ) {
+            return;
+        }
+
+        gateway_->SendLogMessage( ( "ERROR: " + message ).c_str(), false );
     }
 
 private:

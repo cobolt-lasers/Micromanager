@@ -51,12 +51,6 @@ namespace return_code
     const int laser_off = 101003;
 }
 
-template <typename T>
-std::vector<T> VectorFromArray( T* array )
-{
-    return std::vector<T>( array, array + sizeof( array ) / sizeof( array[ 0 ] ) );
-}
-
 NAMESPACE_COBOLT_END
 
 #include "Logger.h"

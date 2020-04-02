@@ -199,7 +199,7 @@ int CoboltOfficial::Fire( double deltaT )
  */
 int CoboltOfficial::SendCommand( const std::string& command, std::string* response )
 {
-    Logger::Instance()->Log( "CoboltOfficial::SendCommand: About to send command '" + command + "', response expected=" + ( response != NULL ? "yes" : "no" ), true );
+    Logger::Instance()->LogMessage( "CoboltOfficial::SendCommand: About to send command '" + command + "', response expected=" + ( response != NULL ? "yes" : "no" ), true );
 
     int returnCode = SendSerialCommand( port_.c_str(), command.c_str(), "\r" );
     
@@ -210,11 +210,11 @@ int CoboltOfficial::SendCommand( const std::string& command, std::string* respon
 
         if ( returnCode != cobolt::return_code::ok ) {
 
-            Logger::Instance()->Log( "CoboltOfficial::SendCommand: GetSerialAnswer Failed: " + std::to_string( (_Longlong) returnCode ), true );
+            Logger::Instance()->LogMessage( "CoboltOfficial::SendCommand: GetSerialAnswer Failed: " + std::to_string( (_Longlong) returnCode ), true );
 
         } else if ( response->find( "error" ) != std::string::npos ) { // TODO: make find case insensitive
 
-            Logger::Instance()->Log( "CoboltOfficial::SendCommand: Sent: " + command + " Reply received: " + *response, true );
+            Logger::Instance()->LogMessage( "CoboltOfficial::SendCommand: Sent: " + command + " Reply received: " + *response, true );
             returnCode = cobolt::return_code::unsupported_command;
         }
     } else {
@@ -224,7 +224,7 @@ int CoboltOfficial::SendCommand( const std::string& command, std::string* respon
         GetSerialAnswer( port_.c_str(), "\r\n", ignoredResponse );
         
         if ( returnCode != cobolt::return_code::ok ) {
-            Logger::Instance()->Log( "CoboltOfficial::SendCommand: SendSerialCommand Failed: " + std::to_string( (_Longlong) returnCode ), true );
+            Logger::Instance()->LogMessage( "CoboltOfficial::SendCommand: SendSerialCommand Failed: " + std::to_string( (_Longlong) returnCode ), true );
         }
     }
     return returnCode;
