@@ -48,7 +48,7 @@ public:
 
 protected:
 
-    Laser( const std::string& name, LaserDevice* device );
+    Laser( const std::string& name, const std::string& wavelength, LaserDevice* device );
 
     /// ###
     /// Overrideable Property Factories

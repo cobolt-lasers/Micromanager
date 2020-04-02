@@ -281,7 +281,7 @@ int CoboltOfficial::OnPropertyAction_Laser( MM::PropertyBase* mm_property, MM::A
     } else if ( action == MM::AfterSet ) {
     
         std::string oldValue, newValue;
-        property->FetchAsString( oldValue );
+        property->FetchInto( oldValue );
         adapterProperty.Get( newValue );
 
         LogMessage( "Property before update = { " + property->ObjectString() + " } with value = '" + oldValue + "'", true );

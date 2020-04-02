@@ -31,11 +31,17 @@ Laser* Laser::Create( LaserDevice* device )
     
     std::vector<std::string> modelTokens;
     DecomposeModelString( modelString, modelTokens );
-    Laser* laser;
+    std::string wavelength = "Unknown";
     
+    if ( modelTokens.size() > 0 ) {
+        wavelength = std::to_string( (_Longlong) atoi( modelTokens[ 0 ].c_str() ) );
+    }
+
+    Laser* laser;
+
     if ( modelString.find( "-06-" ) != std::string::npos ) {
 
-        laser = new Laser( "06-DPL", device );
+        laser = new Laser( "06-DPL", wavelength, device );
 
         StringValueMap runModes[] = {
             { "0", "Constant Current" },
@@ -68,7 +74,7 @@ Laser* Laser::Create( LaserDevice* device )
 
     } else if ( modelString.find( "-05-" ) != std::string::npos ) {
 
-        laser = new Laser( "Compact 05", device );
+        laser = new Laser( "Compact 05", wavelength, device );
 
         StringValueMap runModes[] = {
             { "0", "Constant Current" },
@@ -96,13 +102,7 @@ Laser* Laser::Create( LaserDevice* device )
         
     } else {
 
-        laser = new Laser( "Unknown", device );
-    }
-    
-    if ( modelTokens.size() > 0 ) {
-        laser->wavelength_ = modelTokens[ 0 ];
-    } else {
-        laser->wavelength_ = "Unknown";
+        laser = new Laser( "Unknown", wavelength, device );
     }
     
     Logger::Instance()->LogMessage( "Created laser '" + laser->GetName() + "'", true );
@@ -175,38 +175,33 @@ Laser::PropertyIterator Laser::GetPropertyIteratorEnd()
     return properties_.end();
 }
 
-/**
- * \brief Extracts the string parts from the glm? command and put them one by one in a vector.
- *        expects a string where the parts are separated with the character '-'
- *
- * \example The model string could have a format similar to 'WWWW-06-XX-PPPP-CCC'.
- */
 void Laser::DecomposeModelString( std::string modelString, std::vector<std::string>& modelTokens )
 {
     std::string token;
 
-    for ( std::string::iterator its = modelString.begin(); its != modelString.end(); its++ ) {
+    for ( std::string::iterator character = modelString.begin(); character != modelString.end(); character++ ) {
 
-        if ( *its != '-' ) {
+        if ( *character == '-' || *character == '\r' ) {
 
-            token.push_back( *its );
-
-        } else if ( *its == '\r' ) {
-
-            modelTokens.push_back( token );
-            break;
+            if ( token.length() > 0 ) {
+                modelTokens.push_back( token );
+                token.clear();
+            }
 
         } else {
 
-            modelTokens.push_back( token );
-            token.clear();
+            token.push_back( *character );
         }
+    }
+    
+    if ( token.length() > 0 ) {
+        modelTokens.push_back( token );
     }
 }
 
-Laser::Laser( const std::string& name, LaserDevice* device ) :
+Laser::Laser( const std::string& name, const std::string& wavelength, LaserDevice* device ) :
     name_( name ),
-    wavelength_( "Unknown" ),
+    wavelength_( wavelength ),
     device_( device ),
     maxCurrentSetpoint_( 0.0f ),
     maxPowerSetpoint_( 0.0f ),
@@ -261,7 +256,9 @@ void Laser::CreateCurrentSetpointProperty()
 
 void Laser::CreateCurrentReadingProperty()
 {
-    RegisterPublicProperty( new BasicProperty<double>( "Measured Current [" + currentUnit_ + "]", device_, "i?") );
+    Property* property = new BasicProperty<double>( "Measured Current [" + currentUnit_ + "]", device_, "i?" );
+    property->SetCaching( false );
+    RegisterPublicProperty( property );
 }
 
 void Laser::CreatePowerSetpointProperty()
@@ -272,7 +269,9 @@ void Laser::CreatePowerSetpointProperty()
 
 void Laser::CreatePowerReadingProperty()
 {
-    RegisterPublicProperty( new BasicProperty<double>( "Power Reading [" + powerUnit_ + "]", device_, "pa?") );
+    Property* property = new BasicProperty<double>( "Power Reading [" + powerUnit_ + "]", device_, "pa?" );
+    property->SetCaching( false );
+    RegisterPublicProperty( property );
 }
 
 void Laser::CreateToggleProperty()

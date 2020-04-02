@@ -50,43 +50,19 @@ public:
 
     enum Stereotype { String, Float, Integer };
     
-    class FetchValueModifier // TODO: Deprecated?
-    {
-    public:
-
-        virtual void ApplyOn( GuiProperty& guiProperty ) = 0;
-    };
-
     Property( const std::string& name ) :
         name_( name ),
-        fetchValueModifier_( NULL )
+        doCache_( true )
     {}
-
-    virtual ~Property()
-    {
-        if ( fetchValueModifier_ != NULL ) {
-            delete fetchValueModifier_;
-        }
-    }
-
-    /**
-     * \brief Attaches a modifier that will the fetched value (e.g. if a certain model returns
-     *        amperes but want milliamperes).
-     *
-     * \attention Takes object ownership.
-     */
-    void SetupWith( FetchValueModifier* fetchValueModifier )
-    {
-        if ( fetchValueModifier_ != NULL ) {
-            delete fetchValueModifier_;
-        }
-
-        fetchValueModifier_ = fetchValueModifier;
-    }
 
     virtual int IntroduceToGuiEnvironment( GuiEnvironment* )
     {
         return return_code::ok;
+    }
+
+    void SetCaching( const bool enabled )
+    {
+        doCache_ = enabled;
     }
 
     const std::string& GetName() const
@@ -110,7 +86,7 @@ public:
     virtual int OnGuiGetAction( GuiProperty& guiProperty )
     {
         std::string string;
-        int returnCode = CachedFetchAsString( string );
+        int returnCode = FetchIntoAndCacheIfEnabled( string );
 
         if ( returnCode != return_code::ok ) {
 
@@ -119,10 +95,6 @@ public:
         }
         
         guiProperty.Set( string.c_str() );
-
-        if ( fetchValueModifier_ != NULL ) {
-            fetchValueModifier_->ApplyOn( guiProperty );
-        }
         
         return returnCode;
     }
@@ -131,7 +103,7 @@ public:
     template <> double Get() const
     {
         std::string string;
-        const int returnCode = CachedFetchAsString( string );
+        const int returnCode = FetchIntoAndCacheIfEnabled( string );
         
         if ( returnCode != return_code::ok ) {
             return 0.0f;
@@ -143,7 +115,7 @@ public:
     template <> std::string Get() const
     {
         std::string string;
-        const int returnCode = CachedFetchAsString( string );
+        const int returnCode = FetchIntoAndCacheIfEnabled( string );
 
         if ( returnCode != return_code::ok ) {
             SetToUnknownValue( string );
@@ -152,7 +124,7 @@ public:
         return string;
     }
 
-    virtual int FetchAsString( std::string& string ) const = 0;
+    virtual int FetchInto( std::string& string ) const = 0;
 
     /**
      * \brief The property object represented in a string. For logging/debug purposes.
@@ -183,34 +155,41 @@ protected:
     template <> Stereotype ResolveStereotype<double>() const                                { return Float;   }
     template <> Stereotype ResolveStereotype<int>() const                                   { return Integer; }
 
-    void ClearCachedValue() const
+    void ClearCacheIfCachingEnabled() const
     {
         cachedValue_.clear();
     }
 
 private:
 
-    int CachedFetchAsString( std::string& string ) const
+    int FetchIntoAndCacheIfEnabled( std::string& string ) const
     {
         int returnCode = return_code::ok;
 
-        if ( cachedValue_.length() == 0 ) {
-            returnCode = FetchAsString( cachedValue_ );
-        }
-        
-        if ( returnCode == return_code::ok ) {
-            string = cachedValue_;
+        if ( doCache_ ) {
+
+            if ( cachedValue_.length() == 0 && doCache_ ) {
+                returnCode = FetchInto( cachedValue_ );
+            }
+
+            if ( returnCode == return_code::ok ) {
+                string = cachedValue_;
+            } else {
+                ClearCacheIfCachingEnabled();
+            }
+
         } else {
-            ClearCachedValue();
+
+            returnCode = FetchInto( string );
         }
         
         return returnCode;
     }
 
     std::string name_;
-    mutable std::string cachedValue_;
 
-    FetchValueModifier* fetchValueModifier_;
+    bool doCache_;
+    mutable std::string cachedValue_;
 };
 
 class MutableProperty : public Property
@@ -250,7 +229,7 @@ public:
             return returnCode;
         }
 
-        ClearCachedValue();
+        ClearCacheIfCachingEnabled();
 
         Logger::Instance()->LogMessage( "MutableProperty[" + GetName() + "]::SetFrom( GuiProperty( '" + value + "' ) ): Succeeded", true );
 
@@ -291,7 +270,7 @@ public:
         return String;
     }
 
-    virtual int FetchAsString( std::string& string ) const
+    virtual int FetchInto( std::string& string ) const
     {
         string = value_;
         return return_code::ok;
@@ -323,7 +302,7 @@ public:
         return ResolveStereotype<T>();
     }
 
-    virtual int FetchAsString( std::string& string ) const // Whatever is changed here should be replicated in BasicMutableProperty::FetchAsString( ... )
+    virtual int FetchInto( std::string& string ) const // Whatever is changed here should be replicated in BasicMutableProperty::FetchInto( ... )
     {
         int returnCode = laserDevice_->SendCommand( getCommand_, &string );
         if ( returnCode != return_code::ok ) { SetToUnknownValue( string ); return returnCode; }
@@ -358,7 +337,7 @@ public:
         return ResolveStereotype<T>();
     }
 
-    virtual int FetchAsString( std::string& string ) const // Whatever is changed here should be replicated in BasicProperty::FetchAsString( ... )
+    virtual int FetchInto( std::string& string ) const // Whatever is changed here should be replicated in BasicProperty::FetchInto( ... )
     {
         int returnCode = laserDevice_->SendCommand( getCommand_, &string );
         if ( returnCode != return_code::ok ) { SetToUnknownValue( string ); return returnCode; }
@@ -422,10 +401,10 @@ public:
         validValues_.push_back( validValue );
     }
 
-    virtual int FetchAsString( std::string& string ) const
+    virtual int FetchInto( std::string& string ) const
     {
         std::string commandValue;
-        Parent::FetchAsString( commandValue );
+        Parent::FetchInto( commandValue );
 
         for ( valid_values_t::const_iterator validValue = validValues_.begin();
               validValue != validValues_.end(); validValue++ ) {
@@ -437,7 +416,7 @@ public:
         }
 
         string = "Invalid Value";
-        Logger::Instance()->LogError( "EnumerationProperty[" + GetName() + "]::FetchAsString( ... ): No matching GUI value found for command value '" + commandValue + "'" );
+        Logger::Instance()->LogError( "EnumerationProperty[" + GetName() + "]::FetchInto( ... ): No matching GUI value found for command value '" + commandValue + "'" );
         return return_code::error;
     }
 
@@ -571,7 +550,7 @@ public:
         guiValue_( value::toggle::off.guiValue )
     {}
     
-    virtual int FetchAsString( std::string& string ) const
+    virtual int FetchInto( std::string& string ) const
     {
         string = guiValue_;
         return return_code::ok;
@@ -605,7 +584,7 @@ public:
     LaserSimulatedPausedProperty( const std::string& name, LaserDevice* laserDevice );
     virtual ~LaserSimulatedPausedProperty();
 
-    virtual int FetchAsString( std::string& string ) const
+    virtual int FetchInto( std::string& string ) const
     {
         if ( IsPaused() ) {
             string = value::toggle::on.guiValue;
