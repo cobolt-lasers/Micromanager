@@ -141,16 +141,14 @@
     <ClCompile Include="CoboltOfficial.cpp" />
     <ClCompile Include="Laser.cpp" />
     <ClCompile Include="Property.cpp" />
-    <ClCompile Include="types.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="cobolt.h" />
+    <ClInclude Include="base.h" />
     <ClInclude Include="CoboltOfficial.h" />
     <ClInclude Include="Laser.h" />
     <ClInclude Include="LaserDevice.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="Property.h" />
-    <ClInclude Include="types.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\MMDevice\MMDevice-SharedRuntime.vcxproj">

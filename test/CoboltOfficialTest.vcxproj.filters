@@ -29,9 +29,6 @@
     <ClCompile Include="..\Property.cpp">
       <Filter>Source Files\CoboltOfficial Source</Filter>
     </ClCompile>
-    <ClCompile Include="..\types.cpp">
-      <Filter>Source Files\CoboltOfficial Source</Filter>
-    </ClCompile>
     <ClCompile Include="..\Laser.cpp">
       <Filter>Source Files\CoboltOfficial Source</Filter>
     </ClCompile>

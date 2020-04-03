@@ -24,15 +24,9 @@
     <ClCompile Include="Property.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="types.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CoboltOfficial.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="cobolt.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Laser.h">
@@ -44,10 +38,10 @@
     <ClInclude Include="Property.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="types.h">
+    <ClInclude Include="LaserDevice.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="LaserDevice.h">
+    <ClInclude Include="base.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

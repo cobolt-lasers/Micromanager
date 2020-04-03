@@ -24,7 +24,6 @@
   <ItemGroup>
     <ClCompile Include="..\Laser.cpp" />
     <ClCompile Include="..\Property.cpp" />
-    <ClCompile Include="..\types.cpp" />
     <ClCompile Include="~runner.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

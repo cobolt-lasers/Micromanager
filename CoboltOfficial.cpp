@@ -70,7 +70,6 @@ CoboltOfficial::CoboltOfficial() :
 {
     cobolt::Logger::Instance()->SetupWithGateway( this );
     
-    // TODO Auto-generated constructor stub
     assert( strlen( g_DeviceName ) < (unsigned int) MM::MaxStrLength );
 
     InitializeDefaultErrorMessages();
@@ -107,7 +106,7 @@ int CoboltOfficial::Initialize()
 
     if ( port_ == g_Property_Port_None ) {
 
-        LogMessage( "CoboltOfficial::Initialize(): Serial port not selected", true );
+        Logger::Instance()->LogError( "CoboltOfficial::Initialize(): Serial port not selected" );
         return cobolt::return_code::serial_port_undefined;
     }
 
@@ -212,7 +211,9 @@ int CoboltOfficial::SendCommand( const std::string& command, std::string* respon
 
             Logger::Instance()->LogMessage( "CoboltOfficial::SendCommand: GetSerialAnswer Failed: " + std::to_string( (_Longlong) returnCode ), true );
 
-        } else if ( response->find( "error" ) != std::string::npos ) { // TODO: make find case insensitive
+        } else if ( response->find( "error" ) != std::string::npos ||
+                    response->find( "Error" ) != std::string::npos ||
+                    response->find( "ERROR" ) != std::string::npos ) {
 
             Logger::Instance()->LogMessage( "CoboltOfficial::SendCommand: Sent: " + command + " Reply received: " + *response, true );
             returnCode = cobolt::return_code::unsupported_command;
@@ -269,26 +270,26 @@ int CoboltOfficial::OnPropertyAction_Port( MM::PropertyBase* guiProperty, MM::Ac
 
 int CoboltOfficial::OnPropertyAction_Laser( MM::PropertyBase* mm_property, MM::ActionType action )
 {
-    GuiPropertyAdapter adapterProperty( mm_property );
+    GuiPropertyAdapter guiProperty( mm_property );
 
     int returnCode = return_code::ok;
     Property* property = laser_->GetProperty( mm_property->GetName() );
     
     if ( action == MM::BeforeGet ) {
 
-        returnCode = property->OnGuiGetAction( adapterProperty );
+        returnCode = property->OnGuiGetAction( guiProperty );
 
     } else if ( action == MM::AfterSet ) {
     
         std::string oldValue, newValue;
         property->FetchInto( oldValue );
-        adapterProperty.Get( newValue );
+        guiProperty.Get( newValue );
 
-        LogMessage( "Property before update = { " + property->ObjectString() + " } with value = '" + oldValue + "'", true );
+        Logger::Instance()->LogMessage( "CoboltOfficial::OnPropertyAction_Laser( '" + mm_property->GetName() + "', AfterSet ): Property before update = { " + property->ObjectString() + " } with value = '" + oldValue + "'", true );
 
-        returnCode = property->OnGuiSetAction( adapterProperty );
+        returnCode = property->OnGuiSetAction( guiProperty );
         
-        LogMessage( "Property after update = { " + property->ObjectString() + " } with value = '" + newValue + "'", true );
+        Logger::Instance()->LogMessage( "CoboltOfficial::OnPropertyAction_Laser( '" + mm_property->GetName() + "', AfterSet ): Property after update = { " + property->ObjectString() + " } with value = '" + newValue + "'", true );
     }
     
     return returnCode;
@@ -319,9 +320,9 @@ int CoboltOfficial::ExposeToGui( const Property* property )
         action );
     
     if ( returnCode != return_code::ok ) {
-        LogMessage( "Failed to expose property { " + property->ObjectString() + " } to GUI.", true );
+        Logger::Instance()->LogMessage( "CoboltOfficial::ExposeToGui( '" + property->GetName() + "' ): Failed to expose property { " + property->ObjectString() + " } to GUI.", true );
     } else {
-        LogMessage( "Exposed property { " + property->ObjectString() + " } to GUI with initial value = '" + initialValue + "'.", true );
+        Logger::Instance()->LogMessage( "CoboltOfficial::ExposeToGui( '" + property->GetName() + "' ): Exposed property { " + property->ObjectString() + " } to GUI with initial value = '" + initialValue + "'.", true );
     }
 
     return returnCode;

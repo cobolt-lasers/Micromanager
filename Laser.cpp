@@ -39,7 +39,7 @@ Laser* Laser::Create( LaserDevice* device )
 
     Laser* laser;
 
-    if ( modelString.find( "-06-" ) != std::string::npos ) {
+    if ( modelString.find( "-06-91-" ) != std::string::npos ) {
 
         laser = new Laser( "06-DPL", wavelength, device );
 
@@ -51,8 +51,36 @@ Laser* Laser::Create( LaserDevice* device )
 
         laser->currentUnit_ = Milliamperes; 
         laser->powerUnit_ = Milliwatts;
-        laser->maxCurrentSetpoint_ = 3.0f;
-        laser->maxPowerSetpoint_ = 100.0f; // TODO: Pick proper value.
+
+        laser->CreateNameProperty();
+        laser->CreateModelProperty();
+        laser->CreateWavelengthProperty();
+        laser->CreateSerialNumberProperty();
+        laser->CreateFirmwareVersionProperty();
+        laser->CreateOperatingHoursProperty();
+        laser->CreateCurrentSetpointProperty();
+        laser->CreateCurrentReadingProperty();
+        laser->CreatePowerSetpointProperty();
+        laser->CreatePowerReadingProperty();
+        laser->CreateToggleProperty();
+        laser->CreatePausedProperty();
+        laser->CreateRunModeProperty( std::vector<StringValueMap>( runModes, ArrayEnd( runModes ) ) );
+        laser->CreateDigitalModulationProperty();
+        laser->CreateAnalogModulationFlagProperty();
+
+    } else if ( modelString.find( "-06-01-" ) != std::string::npos ||
+                modelString.find( "-06-03-" ) != std::string::npos ) {
+
+        laser = new Laser( "06-MLD", wavelength, device );
+
+        StringValueMap runModes[] = {
+            { "0", "Constant Current" },
+            { "1", "Constant Power" },
+            { "2", "Modulation" }
+        };
+
+        laser->currentUnit_ = Milliamperes;
+        laser->powerUnit_ = Milliwatts;
 
         laser->CreateNameProperty();
         laser->CreateModelProperty();
@@ -71,7 +99,7 @@ Laser* Laser::Create( LaserDevice* device )
         laser->CreateAnalogModulationFlagProperty();
         laser->CreateModulationPowerSetpointProperty();
         laser->CreateAnalogImpedanceProperty();
-
+        
     } else if ( modelString.find( "-05-" ) != std::string::npos ) {
 
         laser = new Laser( "Compact 05", wavelength, device );
@@ -83,8 +111,6 @@ Laser* Laser::Create( LaserDevice* device )
 
         laser->currentUnit_ = Amperes;
         laser->powerUnit_ = Milliwatts;
-        laser->maxCurrentSetpoint_ = 3.0f;
-        laser->maxPowerSetpoint_ = 100.0f; // TODO: Pick proper value.
 
         laser->CreateNameProperty();
         laser->CreateModelProperty();
@@ -137,22 +163,22 @@ const std::string& Laser::GetWavelength() const
 
 void Laser::SetOn( const bool on )
 {
-    toggleProperty_->Set( ( on ? value::toggle::on.guiValue : value::toggle::off.guiValue ) );
+    toggleProperty_->Set( ( on ? value::toggle::on.guiValueAlias : value::toggle::off.guiValueAlias ) );
 }
 
 void Laser::SetPaused( const bool paused )
 {
-    pausedProperty_->Set( ( paused ? value::toggle::on.guiValue : value::toggle::off.guiValue ) );
+    pausedProperty_->Set( ( paused ? value::toggle::on.guiValueAlias : value::toggle::off.guiValueAlias ) );
 }
 
 bool Laser::IsOn() const
 {
-    return ( toggleProperty_->Get<std::string>() == value::toggle::on.guiValue );
+    return ( toggleProperty_->Get<std::string>() == value::toggle::on.guiValueAlias );
 }
 
 bool Laser::IsPaused() const
 {
-    return ( pausedProperty_->Get<std::string>() == value::toggle::on.guiValue );
+    return ( pausedProperty_->Get<std::string>() == value::toggle::on.guiValueAlias );
 }
 
 Property* Laser::GetProperty( const std::string& name ) const
@@ -203,8 +229,6 @@ Laser::Laser( const std::string& name, const std::string& wavelength, LaserDevic
     name_( name ),
     wavelength_( wavelength ),
     device_( device ),
-    maxCurrentSetpoint_( 0.0f ),
-    maxPowerSetpoint_( 0.0f ),
     currentUnit_( "?" ),
     powerUnit_( "?" )
 {
@@ -250,7 +274,16 @@ void Laser::CreateOperatingHoursProperty()
 
 void Laser::CreateCurrentSetpointProperty()
 {
-    MutableProperty* property = new NumericProperty<double>( "Current Setpoint [" + currentUnit_ + "]", device_, "glc?", "slc", 0.0f, maxCurrentSetpoint_ );
+    std::string maxCurrentSetpointResponse;
+    if ( device_->SendCommand( "gmlc?", &maxCurrentSetpointResponse ) != return_code::ok ) {
+
+        Logger::Instance()->LogError( "Laser::CreateCurrentSetpointProperty(): Failed to retrieve max current sepoint" );
+        return;
+    }
+
+    const double maxCurrentSetpoint = atof( maxCurrentSetpointResponse.c_str() );
+
+    MutableProperty* property = new NumericProperty<double>( "Current Setpoint [" + currentUnit_ + "]", device_, "glc?", "slc", 0.0f, maxCurrentSetpoint );
     RegisterPublicProperty( property );
 }
 
@@ -263,7 +296,16 @@ void Laser::CreateCurrentReadingProperty()
 
 void Laser::CreatePowerSetpointProperty()
 {
-    MutableProperty* property = new NumericProperty<double>( "Power Setpoint [" + powerUnit_ + "]", device_, "glp?", "slp", 0.0f, maxPowerSetpoint_ );
+    std::string maxPowerSetpointResponse;
+    if ( device_->SendCommand( "gmlp?", &maxPowerSetpointResponse ) != return_code::ok ) {
+
+        Logger::Instance()->LogError( "Laser::CreatePowerSetpointProperty(): Failed to retrieve max power sepoint" );
+        return;
+    }
+
+    const double maxPowerSetpoint = atof( maxPowerSetpointResponse.c_str() );
+    
+    MutableProperty* property = new NumericProperty<double>( "Power Setpoint [" + powerUnit_ + "]", device_, "glp?", "slp", 0.0f, maxPowerSetpoint );
     RegisterPublicProperty( property );
 }
 
@@ -283,17 +325,18 @@ void Laser::CreateToggleProperty()
 void Laser::CreatePausedProperty()
 {
     if ( IsPauseCommandSupported() ) {
-        pausedProperty_ = new LaserPausedProperty( "Paused", device_ );
+        pausedProperty_ = new LaserPausedProperty( "Shining Paused", device_ );
     } else {
-        pausedProperty_ = new LaserSimulatedPausedProperty( "Paused", device_ );
+        pausedProperty_ = new LaserSimulatedPausedProperty( "Shining Paused", device_ );
     }
     
-    RegisterPublicProperty( pausedProperty_ ); // TODO: Consider removing as this property should not be public?
+    RegisterPublicProperty( pausedProperty_ );
 }
 
 void Laser::CreateRunModeProperty( const std::vector<StringValueMap>& supportedRunModes )
 {
     EnumerationProperty* property = new EnumerationProperty( "Run Mode", device_, "gam?", "sam" );
+    property->SetCaching( false );
 
     for ( std::vector<StringValueMap>::const_iterator supportedRunMode = supportedRunModes.begin();
         supportedRunMode != supportedRunModes.end(); supportedRunMode++ ) {

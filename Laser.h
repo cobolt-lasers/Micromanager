@@ -14,7 +14,7 @@
 #include <map>
 #include <vector>
 
-#include "cobolt.h"
+#include "base.h"
 #include "Logger.h"
 #include "LaserDevice.h"
 #include "Property.h"
@@ -94,9 +94,6 @@ private:
     std::string name_;
     std::string wavelength_;
     LaserDevice* device_;
-
-    double maxCurrentSetpoint_;
-    double maxPowerSetpoint_;
 
     std::string currentUnit_;
     std::string powerUnit_;

@@ -12,13 +12,44 @@
 #include <string>
 #include <vector>
 
-#include "cobolt.h"
-#include "types.h"
+#include "base.h"
 #include "LaserDevice.h"
 
 NAMESPACE_COBOLT_BEGIN
 
-class Laser;
+/**
+ * \brief The Micromanager GUI sometimes uses aliases for actual command argument values. This struct
+ *        abstracts that difference away by bringing together two valid values as one value with two natures.
+ */
+struct StringValueMap
+{
+    std::string commandValue;   // Value accepted by laser serial interface.
+    std::string guiValueAlias;  // Value as seen in the GUI.
+};
+
+inline bool operator == ( const std::string& lhs, const StringValueMap& rhs ) {  return ( lhs == rhs.guiValueAlias || lhs == rhs.commandValue ); }
+inline bool operator != ( const std::string& lhs, const StringValueMap& rhs ) { return !( lhs != rhs ); }
+
+namespace value
+{
+    namespace analog_impedance
+    {
+        extern StringValueMap high;
+        extern StringValueMap low;
+    }
+
+    namespace flag
+    {
+        extern StringValueMap enable;
+        extern StringValueMap disable;
+    }
+
+    namespace toggle
+    {
+        extern StringValueMap on;
+        extern StringValueMap off;
+    }
+}
 
 /**
  * \brief The interface  the property hierarchy sees when receiving GUI events
@@ -50,54 +81,24 @@ public:
 
     enum Stereotype { String, Float, Integer };
     
-    Property( const std::string& name ) :
-        name_( name ),
-        doCache_( true )
-    {}
+    Property( const std::string& name );
 
-    virtual int IntroduceToGuiEnvironment( GuiEnvironment* )
-    {
-        return return_code::ok;
-    }
+    virtual int IntroduceToGuiEnvironment( GuiEnvironment* );
 
-    void SetCaching( const bool enabled )
-    {
-        doCache_ = enabled;
-    }
+    /**
+     * \brief If caching is on, then the value will remain the same until it is
+     *        changed on the Micromanager side. Thus properties that can change
+     *        on laser side should NOT be cached.
+     */
+    void SetCaching( const bool enabled );
 
-    const std::string& GetName() const
-    {
-        return name_;
-    }
+    const std::string& GetName() const;
 
     virtual Stereotype GetStereotype() const = 0;
 
-    virtual bool IsMutable() const
-    {
-        return false;
-    }
-
-    virtual int OnGuiSetAction( GuiProperty& )
-    {
-        Logger::Instance()->LogMessage( "Property[" + GetName() + "]::OnGuiSetAction(): Ignoring 'set' action on read-only property.", true );
-        return return_code::ok;
-    }
-
-    virtual int OnGuiGetAction( GuiProperty& guiProperty )
-    {
-        std::string string;
-        int returnCode = FetchIntoAndCacheIfEnabled( string );
-
-        if ( returnCode != return_code::ok ) {
-
-            SetToUnknownValue( guiProperty );
-            return returnCode;
-        }
-        
-        guiProperty.Set( string.c_str() );
-        
-        return returnCode;
-    }
+    virtual bool IsMutable() const;
+    virtual int OnGuiSetAction( GuiProperty& );
+    virtual int OnGuiGetAction( GuiProperty& guiProperty );
 
     template <typename T> T Get() const;
     template <> double Get() const
@@ -129,62 +130,23 @@ public:
     /**
      * \brief The property object represented in a string. For logging/debug purposes.
      */
-    virtual std::string ObjectString() const
-    {
-        return "name_ = " + name_ + "; ";
-    }
+    virtual std::string ObjectString() const;
 
 protected:
 
-    void SetToUnknownValue( std::string& string ) const
-    {
-        string = "Unknown";
-    }
+    void SetToUnknownValue( std::string& string ) const;
     
-    void SetToUnknownValue( GuiProperty& guiProperty ) const
-    {
-        switch ( GetStereotype() ) {
-            case Float:   guiProperty.Set( "0" ); break;
-            case Integer: guiProperty.Set( "0" ); break;
-            case String:  guiProperty.Set( "Unknown" ); break;
-        }
-    }
+    void SetToUnknownValue( GuiProperty& guiProperty ) const;
     
-    template <typename T> Stereotype ResolveStereotype() const                              { return String;  } // Default // TODO: Do we need these functions?
-    template <> Stereotype ResolveStereotype<std::string>() const                           { return String;  }
-    template <> Stereotype ResolveStereotype<double>() const                                { return Float;   }
-    template <> Stereotype ResolveStereotype<int>() const                                   { return Integer; }
+    template <typename T> Stereotype ResolveStereotype() const { return String;  }
+    template <> Stereotype ResolveStereotype<double>() const   { return Float;   }
+    template <> Stereotype ResolveStereotype<int>() const      { return Integer; }
 
-    void ClearCacheIfCachingEnabled() const
-    {
-        cachedValue_.clear();
-    }
+    void ClearCacheIfCachingEnabled() const;
 
 private:
 
-    int FetchIntoAndCacheIfEnabled( std::string& string ) const
-    {
-        int returnCode = return_code::ok;
-
-        if ( doCache_ ) {
-
-            if ( cachedValue_.length() == 0 && doCache_ ) {
-                returnCode = FetchInto( cachedValue_ );
-            }
-
-            if ( returnCode == return_code::ok ) {
-                string = cachedValue_;
-            } else {
-                ClearCacheIfCachingEnabled();
-            }
-
-        } else {
-
-            returnCode = FetchInto( string );
-        }
-        
-        return returnCode;
-    }
+    int FetchIntoAndCacheIfEnabled( std::string& string ) const;
 
     std::string name_;
 
@@ -198,59 +160,17 @@ class MutableProperty : public Property
 
 public:
 
-    MutableProperty( const std::string& name ) :
-        Property( name )
-    {}
+    MutableProperty( const std::string& name );
 
-    virtual int IntroduceToGuiEnvironment( GuiEnvironment* )
-    {
-        return return_code::ok;
-    }
-
-    virtual bool IsMutable() const
-    {
-        return true;
-    }
-
-    int SetFrom( GuiProperty& guiProperty )
-    {
-        std::string value;
-
-        guiProperty.Get( value );
-        
-        Logger::Instance()->LogMessage( "MutableProperty[" + GetName() + "]::SetFrom( GuiProperty( '" + value + "' ) )", true );
-        
-        const int returnCode = Set( value );
-        
-        if ( returnCode != return_code::ok ) {
-
-            Logger::Instance()->LogError( "MutableProperty[" + GetName() + "]::SetFrom( GuiProperty( '" + value + "' ) ): Failed" );
-            SetToUnknownValue( guiProperty );
-            return returnCode;
-        }
-
-        ClearCacheIfCachingEnabled();
-
-        Logger::Instance()->LogMessage( "MutableProperty[" + GetName() + "]::SetFrom( GuiProperty( '" + value + "' ) ): Succeeded", true );
-
-        guiProperty.Set( value );
-
-        return return_code::ok;
-    }
-
+    virtual int IntroduceToGuiEnvironment( GuiEnvironment* );
+    virtual bool IsMutable() const;
+    int SetFrom( GuiProperty& guiProperty );
     virtual int Set( const std::string& ) = 0;
-    
-    virtual int OnGuiSetAction( GuiProperty& guiProperty )
-    {
-        return SetFrom( guiProperty );
-    }
+    virtual int OnGuiSetAction( GuiProperty& guiProperty );
 
 protected:
 
-    virtual bool IsValidValue( const std::string& ) const
-    {
-        return true;
-    }
+    virtual bool IsValidValue( const std::string& ) const;
 };
 
 /**
@@ -260,26 +180,11 @@ class StaticStringProperty : public Property
 {
 public:
 
-    StaticStringProperty( const std::string& name, const std::string& value ) :
-        Property( name ),
-        value_( value )
-    {}
+    StaticStringProperty( const std::string& name, const std::string& value );
     
-    virtual Stereotype GetStereotype() const
-    {
-        return String;
-    }
-
-    virtual int FetchInto( std::string& string ) const
-    {
-        string = value_;
-        return return_code::ok;
-    }
-
-    virtual std::string ObjectString() const
-    {
-        return Property::ObjectString() + ( "value_ = " + value_ + "; " );
-    }
+    virtual Stereotype GetStereotype() const;
+    virtual int FetchInto( std::string& string ) const;
+    virtual std::string ObjectString() const;
 
 private:
 
@@ -347,7 +252,7 @@ public:
     virtual int Set( const std::string& value )
     {
         std::string argValue = value;
-        
+
         std::string preparedSetCommand = setCommand_ + " " + argValue;
         return laserDevice_->SendCommand( preparedSetCommand );
     }
@@ -373,84 +278,16 @@ class EnumerationProperty : public BasicMutableProperty<std::string>
 
 public:
     
-    EnumerationProperty( const std::string& name, LaserDevice* laserDevice, const std::string& getCommand, const std::string& setCommand ) :
-        BasicMutableProperty<std::string>( name, laserDevice, getCommand, setCommand )
-    {}
+    EnumerationProperty( const std::string& name, LaserDevice* laserDevice, const std::string& getCommand, const std::string& setCommand );
 
-    virtual int IntroduceToGuiEnvironment( GuiEnvironment* environment )
-    {
-        for ( valid_values_t::const_iterator validValue = validValues_.begin();
-              validValue != validValues_.end(); validValue++ ) {
-
-            const int returnCode = environment->RegisterAllowedGuiPropertyValue( GetName(), validValue->guiValue );
-            if ( returnCode != return_code::ok ) {
-                return returnCode;
-            }
-
-            Logger::Instance()->LogMessage( "EnumerationProperty[ " + GetName() + " ]::IntroduceToGuiEnvironment(): Registered valid value '" +
-                validValue->guiValue + "' in GUI.", true );
-        }
-
-        return return_code::ok;
-    }
-
-    void RegisterValidValue( const StringValueMap& validValue )
-    {
-        Logger::Instance()->LogMessage( "EnumerationProperty[ " + GetName() + " ]::RegisterValidValue( { '" +
-            validValue.commandValue + "', '" + validValue.guiValue + "' } )", true );
-        validValues_.push_back( validValue );
-    }
-
-    virtual int FetchInto( std::string& string ) const
-    {
-        std::string commandValue;
-        Parent::FetchInto( commandValue );
-
-        for ( valid_values_t::const_iterator validValue = validValues_.begin();
-              validValue != validValues_.end(); validValue++ ) {
-
-            if ( commandValue == validValue->commandValue ) {
-                string = validValue->guiValue;
-                return return_code::ok;
-            }
-        }
-
-        string = "Invalid Value";
-        Logger::Instance()->LogError( "EnumerationProperty[" + GetName() + "]::FetchInto( ... ): No matching GUI value found for command value '" + commandValue + "'" );
-        return return_code::error;
-    }
-
-    virtual int Set( const std::string& guiValue )
-    {
-        for ( valid_values_t::const_iterator validValue = validValues_.begin();
-            validValue != validValues_.end(); validValue++ ) {
-
-            if ( guiValue == validValue->guiValue ) {
-                
-                Parent::Set( validValue->commandValue );
-                return return_code::ok;
-            }
-        }
-        
-        Logger::Instance()->LogError( "EnumerationProperty[ " + GetName() + " ]::Set(): Failed to interpret gui value '" + guiValue + "'" );
-        return return_code::error;
-    }
+    virtual int IntroduceToGuiEnvironment( GuiEnvironment* environment );
+    void RegisterValidValue( const StringValueMap& validValue );
+    virtual int FetchInto( std::string& string ) const;
+    virtual int Set( const std::string& guiValue );
 
 protected:
 
-    virtual bool IsValidValue( const std::string& value ) const
-    {
-        for ( valid_values_t::const_iterator validValue = validValues_.begin();
-            validValue != validValues_.end(); validValue++ ) {
-
-            // We interpret both the GUI and the command value as valid values:
-            if ( validValue->guiValue == value || validValue->commandValue == value ) {
-                return true;
-            }
-        }
-        
-        return false;
-    }
+    virtual bool IsValidValue( const std::string& value ) const;
 
 private:
 
@@ -487,7 +324,7 @@ private:
 
     T min_;
     T max_;
-};
+}; 
 
 class BoolProperty : public EnumerationProperty
 {
@@ -496,42 +333,11 @@ public:
     enum stereotype_t { EnableDisable, OnOff };
 
     BoolProperty( const std::string& name, LaserDevice* laserDevice,
-                  const stereotype_t stereotype, const std::string& getCommand,
-                  const std::string& setTrueCommand, const std::string& setFalseCommand ) :
-        EnumerationProperty( name, laserDevice, getCommand, "N/A" ),
-        setTrueCommand_( setTrueCommand ),
-        setFalseCommand_( setFalseCommand )
-    {
-        if ( stereotype == OnOff ) {
+        const stereotype_t stereotype, const std::string& getCommand,
+        const std::string& setTrueCommand, const std::string& setFalseCommand );
 
-            RegisterValidValue( value::toggle::on );
-            RegisterValidValue( value::toggle::off );
-
-        } else {
-
-            RegisterValidValue( value::flag::enable );
-            RegisterValidValue( value::flag::disable );
-        }
-    }
-
-    virtual int Set( const std::string& value )
-    {
-        if ( !IsValidValue( value ) ) {
-            Logger::Instance()->LogError( "BoolProperty[ " + GetName() + " ]::Set( '" + value + "' ): Invalid value" );
-            return return_code::invalid_property_value;
-        }
-
-        if ( value == value::toggle::on ) {
-            return laserDevice_->SendCommand( setTrueCommand_ );
-        } else {
-            return laserDevice_->SendCommand( setFalseCommand_ );
-        }
-    }
-
-    virtual std::string ObjectString() const
-    {
-        return BasicMutableProperty<std::string>::ObjectString() + ( "setTrueCommand_ = " + setTrueCommand_ + "; setFalseCommand_ = " + setFalseCommand_ + "; " );
-    }
+    virtual int Set( const std::string& value );
+    virtual std::string ObjectString() const;
 
 private:
 
@@ -545,32 +351,11 @@ class LaserPausedProperty : public BoolProperty
 
 public:
 
-    LaserPausedProperty( const std::string& name, LaserDevice* laserDevice ) :
-        BoolProperty( name, laserDevice, BoolProperty::OnOff, "N/A", "l1r", "l0r" ),
-        guiValue_( value::toggle::off.guiValue )
-    {}
+    LaserPausedProperty( const std::string& name, LaserDevice* laserDevice );
     
-    virtual int FetchInto( std::string& string ) const
-    {
-        string = guiValue_;
-        return return_code::ok;
-    }
-
-    virtual int Set( const std::string& value )
-    {
-        const int returnCode = Parent::Set( value );
-
-        if ( returnCode == return_code::ok ) {
-            guiValue_ = value;
-        }
-        
-        return returnCode;
-    }
-
-    virtual std::string ObjectString() const
-    {
-        return BoolProperty::ObjectString() + ( "guiValue_ = " + guiValue_ + "; " );
-    }
+    virtual int FetchInto( std::string& string ) const;
+    virtual int Set( const std::string& value );
+    virtual std::string ObjectString() const;
 
 private:
 
@@ -584,59 +369,8 @@ public:
     LaserSimulatedPausedProperty( const std::string& name, LaserDevice* laserDevice );
     virtual ~LaserSimulatedPausedProperty();
 
-    virtual int FetchInto( std::string& string ) const
-    {
-        if ( IsPaused() ) {
-            string = value::toggle::on.guiValue;
-        } else {
-            string = value::toggle::off.guiValue;
-        }
-        
-        return return_code::ok;
-    }
-
-    virtual int Set( const std::string& value )
-    {
-        if ( !IsValidValue( value ) ) {
-            Logger::Instance()->LogError( "LaserSimulatedPausedProperty[ " + GetName() + " ]::Set( '" + value + "' ): Invalid value" );
-            return return_code::invalid_property_value;
-        }
-        
-        int returnCode = return_code::ok;
-
-        if ( value == value::toggle::on && !IsPaused() ) {
-
-            savedLaserState_ = new LaserState();
-
-            if ( laserDevice_->SendCommand( "glc?", &savedLaserState_->currentSetpoint ) != return_code::ok ||
-                 laserDevice_->SendCommand( "gam?", &savedLaserState_->runMode ) != return_code::ok ) {
-
-                Logger::Instance()->LogError( "LaserSimulatedPausedProperty[ " + GetName() + " ]::Set( '" + value + "' ): Failed to save laser state" );
-                return return_code::error;
-            }
-
-            returnCode = laserDevice_->SendCommand( "ecc" );
-            if ( returnCode == return_code::ok ) {
-                returnCode = laserDevice_->SendCommand( "slc 0.1" ); // TODO: Set to 0 (0.1 is for compact 05 that currently does not work with slc 0)
-            }
-
-        } else if ( IsPaused() ) {
-
-            returnCode = laserDevice_->SendCommand( "sam " + savedLaserState_->runMode );
-            if ( returnCode == return_code::ok ) {
-                returnCode = laserDevice_->SendCommand( "slc " +savedLaserState_->currentSetpoint );
-            }
-            
-            delete savedLaserState_;
-            savedLaserState_ = NULL;
-
-        } else {
-            
-            Logger::Instance()->LogMessage( "LaserSimulatedPausedProperty[" + GetName() + "]::Set( '" + value + "' ): Ignored request as requested state is already set", true );
-        }
-        
-        return returnCode;
-    }
+    virtual int FetchInto( std::string& string ) const;
+    virtual int Set( const std::string& value );
     
 private:
 
@@ -646,10 +380,7 @@ private:
         std::string currentSetpoint;
     };
 
-    bool IsPaused() const
-    {
-        return ( savedLaserState_ != NULL );
-    }
+    bool IsPaused() const;
 
     LaserState* savedLaserState_;
 };
