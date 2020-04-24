@@ -24,6 +24,27 @@
     <ClCompile Include="Property.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="EnumerationProperty.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="LaserShutterProperty.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="MutableDeviceProperty.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="NumericProperty.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="StaticStringProperty.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DeviceProperty.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="LegacyLaserShutterProperty.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CoboltOfficial.h">
@@ -42,6 +63,27 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="base.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DeviceProperty.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="EnumerationProperty.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="LaserShutterProperty.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MutableDeviceProperty.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="NumericProperty.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="StaticStringProperty.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="LegacyLaserShutterProperty.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

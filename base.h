@@ -28,6 +28,7 @@ namespace return_code
     const int illegal_port_change = 101001;
     const int serial_port_undefined = 101002;
     const int laser_off = 101003;
+    const int invalid_value = 101004;
 }
 
 NAMESPACE_COBOLT_END

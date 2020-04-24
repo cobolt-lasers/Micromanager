@@ -68,7 +68,7 @@ CoboltOfficial::CoboltOfficial() :
     isBusy_( false ),
     port_( "None" )
 {
-    cobolt::Logger::Instance()->SetupWithGateway( this );
+    cobolt::Logger::Instance()->SetupWithGateway( this ); // TODO: Must be one instance per device.
     
     assert( strlen( g_DeviceName ) < (unsigned int) MM::MaxStrLength );
 
@@ -82,6 +82,7 @@ CoboltOfficial::CoboltOfficial() :
     // Map cobolt specific error codes to readable strings:
     SetErrorText( cobolt::return_code::illegal_port_change,     "Port change not allowed."       );
     SetErrorText( cobolt::return_code::laser_off,               "Laser is off."                  );
+    SetErrorText( cobolt::return_code::invalid_value,           "Invalid value"                  );
     SetErrorText( cobolt::return_code::serial_port_undefined,   "No valid serial port selected." );
 
     // Create non-laser properties:
@@ -96,6 +97,11 @@ CoboltOfficial::CoboltOfficial() :
 CoboltOfficial::~CoboltOfficial()
 {
     Shutdown();
+
+    if ( laser_ != NULL ) {
+        delete laser_;
+        laser_ = NULL;
+    }
 }
 
 int CoboltOfficial::Initialize()
@@ -126,6 +132,8 @@ int CoboltOfficial::Initialize()
 
     isInitialized_ = true;
 
+    cobolt::Logger::Instance()->LogMessage( "CoboltOfficial::Initialize(): Initialization successful", true );
+
     return cobolt::return_code::ok;
 }
 
@@ -154,11 +162,7 @@ int CoboltOfficial::SetOpen( bool open )
         return cobolt::return_code::laser_off;
     }
     
-    if ( open ) {
-        laser_->SetPaused( false );
-    } else {
-        laser_->SetPaused( true );
-    }
+    laser_->SetShutterOpen( open );
     
     return cobolt::return_code::ok;
 }
@@ -246,23 +250,23 @@ int CoboltOfficial::RegisterAllowedGuiPropertyRange( const std::string& property
     return SetPropertyLimits( propertyName.c_str(), min, max );
 }
 
-int CoboltOfficial::OnPropertyAction_Port( MM::PropertyBase* guiProperty, MM::ActionType action )
+int CoboltOfficial::OnPropertyAction_Port( MM::PropertyBase* mm_property, MM::ActionType action )
 {
     if ( action == MM::BeforeGet ) {
 
-        guiProperty->Set( port_.c_str() );
+        mm_property->Set( port_.c_str() );
 
     } else if ( action == MM::AfterSet ) {
 
         if ( isInitialized_ ) {
             
             // Port change after initialization not allowed, thus reset port value:
-            guiProperty->Set( port_.c_str() );
+            mm_property->Set( port_.c_str() );
             
             return cobolt::return_code::illegal_port_change;
         }
 
-        guiProperty->Get( port_ );
+        mm_property->Get( port_ );
     }
 
     return cobolt::return_code::ok;
@@ -309,7 +313,7 @@ MM::PropertyType CoboltOfficial::ResolvePropertyType( const cobolt::Property::St
 
 int CoboltOfficial::ExposeToGui( const Property* property )
 {
-    const std::string initialValue = property->Get<std::string>();
+    const std::string initialValue = property->GetValue();
 
     CPropertyAction* action = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_Laser );
     const int returnCode = CreateProperty(

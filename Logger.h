@@ -39,7 +39,7 @@ public:
             return;
         }
         
-        gateway_->SendLogMessage( ("" + message).c_str(), debug );
+        gateway_->SendLogMessage( message.c_str(), debug );
     }
 
     virtual void LogError( const std::string& message ) const
@@ -47,8 +47,11 @@ public:
         if ( gateway_ == NULL ) {
             return;
         }
+        
+        std::string taggedMessage = std::string( "ERROR: " );
+        taggedMessage.append( message );
 
-        gateway_->SendLogMessage( ( "ERROR: " + message ).c_str(), false );
+        gateway_->SendLogMessage( taggedMessage.c_str(), false );
     }
 
 private:

@@ -17,7 +17,13 @@
 #include "base.h"
 #include "Logger.h"
 #include "LaserDevice.h"
-#include "Property.h"
+#include "StaticStringProperty.h"
+#include "DeviceProperty.h"
+#include "MutableDeviceProperty.h"
+#include "EnumerationProperty.h"
+#include "NumericProperty.h"
+#include "LaserShutterProperty.h"
+#include "LegacyLaserShutterProperty.h"
 
 NAMESPACE_COBOLT_BEGIN
 
@@ -35,7 +41,7 @@ public:
     const std::string& GetWavelength() const;
 
     void SetOn( const bool );
-    void SetPaused( const bool );
+    void SetShutterOpen( const bool );
 
     bool IsOn() const;
     bool IsPaused() const;
@@ -46,7 +52,14 @@ public:
     PropertyIterator GetPropertyIteratorBegin();
     PropertyIterator GetPropertyIteratorEnd();
 
-protected:
+private:
+
+    enum Stereotype {
+
+        ST_06_DPL,
+        ST_06_MLD,
+        ST_05_Series
+    };
 
     Laser( const std::string& name, const std::string& wavelength, LaserDevice* device );
 
@@ -65,21 +78,31 @@ protected:
     void CreatePowerSetpointProperty();
     void CreatePowerReadingProperty();
 
-    void CreateToggleProperty();
-    void CreatePausedProperty();
-    void CreateRunModeProperty( const std::vector<StringValueMap>& supportedRunModes );
+    void CreateLaserOnOffProperty();
+    void CreateShutterProperty();
+    template <Stereotype T> void CreateRunModeProperty() {}
+    template <> void CreateRunModeProperty<ST_05_Series>();
+    template <> void CreateRunModeProperty<ST_06_DPL>();
+    template <> void CreateRunModeProperty<ST_06_MLD>();
     void CreateDigitalModulationProperty();
     void CreateAnalogModulationFlagProperty();
 
     void CreateModulationPowerSetpointProperty();
     void CreateAnalogImpedanceProperty();
     
-private:
-
     static const char* Milliamperes;
     static const char* Amperes;
     static const char* Milliwatts;
     static const char* Watts;
+
+    static const char* EnumerationItem_On;
+    static const char* EnumerationItem_Off;
+    static const char* EnumerationItem_Enabled;
+    static const char* EnumerationItem_Disabled;
+    
+    static const char* EnumerationItem_RunMode_ConstantCurrent;
+    static const char* EnumerationItem_RunMode_ConstantPower;
+    static const char* EnumerationItem_RunMode_Modulation;
 
     static void DecomposeModelString( std::string modelString, std::vector<std::string>& modelTokens );
 
@@ -98,8 +121,8 @@ private:
     std::string currentUnit_;
     std::string powerUnit_;
 
-    MutableProperty* toggleProperty_;
-    MutableProperty* pausedProperty_;
+    MutableDeviceProperty* laserOnOffProperty;
+    MutableDeviceProperty* pausedProperty_;
 };
 
 NAMESPACE_COBOLT_END

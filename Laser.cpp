@@ -10,8 +10,6 @@
 #include "Laser.h"
 #include "Property.h"
 
-#define ArrayEnd( arr ) (arr + sizeof( arr ) / sizeof( arr[ 0 ] ) )
-
 using namespace std;
 using namespace cobolt;
 
@@ -19,6 +17,15 @@ const char* Laser::Milliamperes = "mA";
 const char* Laser::Amperes = "A";
 const char* Laser::Milliwatts = "mW";
 const char* Laser::Watts = "W";
+
+const char* Laser::EnumerationItem_On = "on";
+const char* Laser::EnumerationItem_Off = "off";
+const char* Laser::EnumerationItem_Enabled = "enabled";
+const char* Laser::EnumerationItem_Disabled = "disabled";
+
+const char* Laser::EnumerationItem_RunMode_ConstantCurrent = "Constant Current";
+const char* Laser::EnumerationItem_RunMode_ConstantPower = "Constant Power";
+const char* Laser::EnumerationItem_RunMode_Modulation = "Modulation";
 
 Laser* Laser::Create( LaserDevice* device )
 {
@@ -43,12 +50,6 @@ Laser* Laser::Create( LaserDevice* device )
 
         laser = new Laser( "06-DPL", wavelength, device );
 
-        StringValueMap runModes[] = {
-            { "0", "Constant Current" },
-            { "1", "Constant Power" },
-            { "2", "Modulation" }
-        };
-
         laser->currentUnit_ = Milliamperes; 
         laser->powerUnit_ = Milliwatts;
 
@@ -62,9 +63,9 @@ Laser* Laser::Create( LaserDevice* device )
         laser->CreateCurrentReadingProperty();
         laser->CreatePowerSetpointProperty();
         laser->CreatePowerReadingProperty();
-        laser->CreateToggleProperty();
-        laser->CreatePausedProperty();
-        laser->CreateRunModeProperty( std::vector<StringValueMap>( runModes, ArrayEnd( runModes ) ) );
+        laser->CreateLaserOnOffProperty();
+        laser->CreateShutterProperty();
+        laser->CreateRunModeProperty<ST_06_DPL>();
         laser->CreateDigitalModulationProperty();
         laser->CreateAnalogModulationFlagProperty();
 
@@ -72,12 +73,6 @@ Laser* Laser::Create( LaserDevice* device )
                 modelString.find( "-06-03-" ) != std::string::npos ) {
 
         laser = new Laser( "06-MLD", wavelength, device );
-
-        StringValueMap runModes[] = {
-            { "0", "Constant Current" },
-            { "1", "Constant Power" },
-            { "2", "Modulation" }
-        };
 
         laser->currentUnit_ = Milliamperes;
         laser->powerUnit_ = Milliwatts;
@@ -92,9 +87,9 @@ Laser* Laser::Create( LaserDevice* device )
         laser->CreateCurrentReadingProperty();
         laser->CreatePowerSetpointProperty();
         laser->CreatePowerReadingProperty();
-        laser->CreateToggleProperty();
-        laser->CreatePausedProperty();
-        laser->CreateRunModeProperty( std::vector<StringValueMap>( runModes, ArrayEnd( runModes ) ) );
+        laser->CreateLaserOnOffProperty();
+        laser->CreateShutterProperty();
+        laser->CreateRunModeProperty<ST_06_MLD>();
         laser->CreateDigitalModulationProperty();
         laser->CreateAnalogModulationFlagProperty();
         laser->CreateModulationPowerSetpointProperty();
@@ -103,11 +98,6 @@ Laser* Laser::Create( LaserDevice* device )
     } else if ( modelString.find( "-05-" ) != std::string::npos ) {
 
         laser = new Laser( "Compact 05", wavelength, device );
-
-        StringValueMap runModes[] = {
-            { "0", "Constant Current" },
-            { "1", "Constant Power" }
-        };
 
         laser->currentUnit_ = Amperes;
         laser->powerUnit_ = Milliwatts;
@@ -122,9 +112,9 @@ Laser* Laser::Create( LaserDevice* device )
         laser->CreateCurrentReadingProperty();
         laser->CreatePowerSetpointProperty();
         laser->CreatePowerReadingProperty();
-        laser->CreateToggleProperty();
-        laser->CreatePausedProperty();
-        laser->CreateRunModeProperty( std::vector<StringValueMap>( runModes, ArrayEnd( runModes ) ) );
+        laser->CreateLaserOnOffProperty();
+        laser->CreateShutterProperty();
+        laser->CreateRunModeProperty<ST_05_Series>();
         
     } else {
 
@@ -163,22 +153,27 @@ const std::string& Laser::GetWavelength() const
 
 void Laser::SetOn( const bool on )
 {
-    toggleProperty_->Set( ( on ? value::toggle::on.guiValueAlias : value::toggle::off.guiValueAlias ) );
+    laserOnOffProperty->Set( ( on ? EnumerationItem_On : EnumerationItem_Off ) );
+    
+    // Shutter closed by default (this is also assumed when setting up the shutter property):
+    if ( on ) {
+        SetShutterOpen( false );
+    }
 }
 
-void Laser::SetPaused( const bool paused )
+void Laser::SetShutterOpen( const bool open )
 {
-    pausedProperty_->Set( ( paused ? value::toggle::on.guiValueAlias : value::toggle::off.guiValueAlias ) );
+    pausedProperty_->Set( open ? LaserShutterProperty::Value_Open : LaserShutterProperty::Value_Closed );
 }
 
 bool Laser::IsOn() const
 {
-    return ( toggleProperty_->Get<std::string>() == value::toggle::on.guiValueAlias );
+    return ( laserOnOffProperty->GetValue() ==  EnumerationItem_On );
 }
 
 bool Laser::IsPaused() const
 {
-    return ( pausedProperty_->Get<std::string>() == value::toggle::on.guiValueAlias );
+    return ( pausedProperty_->GetValue() == EnumerationItem_On );
 }
 
 Property* Laser::GetProperty( const std::string& name ) const
@@ -238,8 +233,8 @@ Laser::Laser( const std::string& name, const std::string& wavelength, LaserDevic
     CreateSerialNumberProperty();
     CreateFirmwareVersionProperty();
     CreateOperatingHoursProperty();
-    CreatePausedProperty();
-    CreateToggleProperty();
+    CreateShutterProperty();
+    CreateLaserOnOffProperty();
 }
 
 void Laser::CreateNameProperty()
@@ -249,7 +244,7 @@ void Laser::CreateNameProperty()
 
 void Laser::CreateModelProperty()
 {
-    RegisterPublicProperty( new BasicProperty<std::string>( "Model", device_, "glm?") );
+    RegisterPublicProperty( new DeviceProperty( Property::String, "Model", device_, "glm?") );
 }
 
 void Laser::CreateWavelengthProperty()
@@ -259,17 +254,17 @@ void Laser::CreateWavelengthProperty()
 
 void Laser::CreateSerialNumberProperty()
 {
-    RegisterPublicProperty( new BasicProperty<std::string>( "Serial Number", device_, "gsn?") );
+    RegisterPublicProperty( new DeviceProperty( Property::String, "Serial Number", device_, "gsn?") );
 }
 
 void Laser::CreateFirmwareVersionProperty()
 {
-    RegisterPublicProperty( new BasicProperty<std::string>( "Firmware Version", device_, "gfv?") );
+    RegisterPublicProperty( new DeviceProperty( Property::String, "Firmware Version", device_, "gfv?") );
 }
 
 void Laser::CreateOperatingHoursProperty()
 {
-    RegisterPublicProperty( new BasicProperty<std::string>( "Operating Hours", device_, "hrs?") );
+    RegisterPublicProperty( new DeviceProperty( Property::String, "Operating Hours", device_, "hrs?") );
 }
 
 void Laser::CreateCurrentSetpointProperty()
@@ -283,13 +278,13 @@ void Laser::CreateCurrentSetpointProperty()
 
     const double maxCurrentSetpoint = atof( maxCurrentSetpointResponse.c_str() );
 
-    MutableProperty* property = new NumericProperty<double>( "Current Setpoint [" + currentUnit_ + "]", device_, "glc?", "slc", 0.0f, maxCurrentSetpoint );
+    MutableDeviceProperty* property = new NumericProperty<double>( "Current Setpoint [" + currentUnit_ + "]", device_, "glc?", "slc", 0.0f, maxCurrentSetpoint );
     RegisterPublicProperty( property );
 }
 
 void Laser::CreateCurrentReadingProperty()
 {
-    Property* property = new BasicProperty<double>( "Measured Current [" + currentUnit_ + "]", device_, "i?" );
+    DeviceProperty* property = new DeviceProperty( Property::Float, "Measured Current [" + currentUnit_ + "]", device_, "i?" );
     property->SetCaching( false );
     RegisterPublicProperty( property );
 }
@@ -305,70 +300,110 @@ void Laser::CreatePowerSetpointProperty()
 
     const double maxPowerSetpoint = atof( maxPowerSetpointResponse.c_str() );
     
-    MutableProperty* property = new NumericProperty<double>( "Power Setpoint [" + powerUnit_ + "]", device_, "glp?", "slp", 0.0f, maxPowerSetpoint );
+    MutableDeviceProperty* property = new NumericProperty<double>( "Power Setpoint [" + powerUnit_ + "]", device_, "glp?", "slp", 0.0f, maxPowerSetpoint );
     RegisterPublicProperty( property );
 }
 
 void Laser::CreatePowerReadingProperty()
 {
-    Property* property = new BasicProperty<double>( "Power Reading [" + powerUnit_ + "]", device_, "pa?" );
+    DeviceProperty* property = new DeviceProperty( Property::String, "Power Reading [" + powerUnit_ + "]", device_, "pa?" );
     property->SetCaching( false );
     RegisterPublicProperty( property );
 }
 
-void Laser::CreateToggleProperty()
+void Laser::CreateLaserOnOffProperty()
 {
-    toggleProperty_ = new BoolProperty( "On-Off Switch", device_, BoolProperty::OnOff, "l?", "l1", "l0" );
-    RegisterPublicProperty( toggleProperty_ );
+    EnumerationProperty* property = new EnumerationProperty( "Laser Status", device_, "l?" );
+
+    property->RegisterEnumerationItem( "0", "l0", EnumerationItem_Off );
+    property->RegisterEnumerationItem( "1", "l1", EnumerationItem_On );
+    
+    RegisterPublicProperty( property );
+    laserOnOffProperty = property;
 }
 
-void Laser::CreatePausedProperty()
+void Laser::CreateShutterProperty()
 {
     if ( IsPauseCommandSupported() ) {
-        pausedProperty_ = new LaserPausedProperty( "Shining Paused", device_ );
+        pausedProperty_ = new LaserShutterProperty( "Emission Status", device_ );
     } else {
-        pausedProperty_ = new LaserSimulatedPausedProperty( "Shining Paused", device_ );
+        pausedProperty_ = new LegacyLaserShutterProperty( "Emission Status", device_ );
     }
     
     RegisterPublicProperty( pausedProperty_ );
 }
 
-void Laser::CreateRunModeProperty( const std::vector<StringValueMap>& supportedRunModes )
+template <> void Laser::CreateRunModeProperty<Laser::ST_05_Series>()
 {
-    EnumerationProperty* property = new EnumerationProperty( "Run Mode", device_, "gam?", "sam" );
+    EnumerationProperty* property = new EnumerationProperty( "Run Mode", device_, "gam?" );
     property->SetCaching( false );
 
-    for ( std::vector<StringValueMap>::const_iterator supportedRunMode = supportedRunModes.begin();
-        supportedRunMode != supportedRunModes.end(); supportedRunMode++ ) {
-        property->RegisterValidValue( *supportedRunMode );
-    }
+    property->RegisterEnumerationItem( "0", "sam 0", EnumerationItem_RunMode_ConstantCurrent );
+    property->RegisterEnumerationItem( "1", "sam 1", EnumerationItem_RunMode_ConstantPower );
+
+    RegisterPublicProperty( property );
+}
+
+template <> void Laser::CreateRunModeProperty<Laser::ST_06_DPL>()
+{
+    EnumerationProperty* property = new EnumerationProperty( "Run Mode", device_, "gam?" );
+    property->SetCaching( false );
+
+    property->RegisterEnumerationItem( "0", "sam 0", EnumerationItem_RunMode_ConstantCurrent );
+    property->RegisterEnumerationItem( "1", "sam 1", EnumerationItem_RunMode_ConstantPower );
+    property->RegisterEnumerationItem( "2", "sam 2", EnumerationItem_RunMode_Modulation );
+    
+    RegisterPublicProperty( property );
+}
+
+template <> void Laser::CreateRunModeProperty<Laser::ST_06_MLD>()
+{
+    EnumerationProperty* property = new EnumerationProperty( "Run Mode", device_, "gam?" );
+    property->SetCaching( false );
+
+    property->RegisterEnumerationItem( "0", "sam 0", EnumerationItem_RunMode_ConstantCurrent );
+    property->RegisterEnumerationItem( "1", "sam 1", EnumerationItem_RunMode_ConstantPower );
+    property->RegisterEnumerationItem( "2", "sam 2", EnumerationItem_RunMode_Modulation );
 
     RegisterPublicProperty( property );
 }
 
 void Laser::CreateDigitalModulationProperty()
 {
-    MutableProperty* property = new BoolProperty( "Digital Modulation", device_, BoolProperty::EnableDisable, "gdmes?", "sdmes 1", "sdmes 0" );
+    EnumerationProperty* property = new EnumerationProperty( "Digital Modulation", device_, "gdmes?" );
+    property->RegisterEnumerationItem( "0", "sdmes 0", EnumerationItem_Disabled );
+    property->RegisterEnumerationItem( "1", "sdmes 1", EnumerationItem_Enabled );
     RegisterPublicProperty( property );
 }
 
 void Laser::CreateAnalogModulationFlagProperty()
 {
-    MutableProperty* property = new BoolProperty( "Analog Modulation", device_, BoolProperty::EnableDisable, "games?", "sames 1", "sames 0" );
+    EnumerationProperty* property = new EnumerationProperty( "Analog Modulation", device_,  "games?" );
+    property->RegisterEnumerationItem( "0", "sames 0", EnumerationItem_Disabled );
+    property->RegisterEnumerationItem( "1", "sames 1", EnumerationItem_Enabled );
     RegisterPublicProperty( property );
 }
 
 void Laser::CreateModulationPowerSetpointProperty()
 {
-    RegisterPublicProperty( new BasicMutableProperty<double>( "Modulation Power Setpoint", device_, "glmp?", "slmp") );
+    std::string maxModulationPowerSetpointResponse;
+    if ( device_->SendCommand( "gmlp?", &maxModulationPowerSetpointResponse ) != return_code::ok ) {
+
+        Logger::Instance()->LogError( "Laser::CreatePowerSetpointProperty(): Failed to retrieve max power sepoint" );
+        return;
+    }
+    
+    const double maxModulationPowerSetpoint = atof( maxModulationPowerSetpointResponse.c_str() );
+    
+    RegisterPublicProperty( new NumericProperty<double>( "Modulation Power Setpoint", device_, "glmp?", "slmp", 0, maxModulationPowerSetpoint ) );
 }
 
 void Laser::CreateAnalogImpedanceProperty()
 {
-    EnumerationProperty* property = new EnumerationProperty( "Analog Impedance", device_, "galis?", "salis" );
+    EnumerationProperty* property = new EnumerationProperty( "Analog Impedance", device_, "galis?" );
     
-    property->RegisterValidValue( value::analog_impedance::low );
-    property->RegisterValidValue( value::analog_impedance::high );
+    property->RegisterEnumerationItem( "0", "salis 0", "1 kOhm" );
+    property->RegisterEnumerationItem( "1", "salis 1", "50 Ohm" );
 
     RegisterPublicProperty( property );
 }

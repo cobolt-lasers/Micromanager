@@ -139,16 +139,30 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="CoboltOfficial.cpp" />
+    <ClCompile Include="DeviceProperty.cpp" />
+    <ClCompile Include="EnumerationProperty.cpp" />
     <ClCompile Include="Laser.cpp" />
+    <ClCompile Include="LaserShutterProperty.cpp" />
+    <ClCompile Include="LegacyLaserShutterProperty.cpp" />
+    <ClCompile Include="MutableDeviceProperty.cpp" />
+    <ClCompile Include="NumericProperty.cpp" />
     <ClCompile Include="Property.cpp" />
+    <ClCompile Include="StaticStringProperty.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="base.h" />
     <ClInclude Include="CoboltOfficial.h" />
+    <ClInclude Include="DeviceProperty.h" />
+    <ClInclude Include="EnumerationProperty.h" />
     <ClInclude Include="Laser.h" />
     <ClInclude Include="LaserDevice.h" />
+    <ClInclude Include="LaserShutterProperty.h" />
+    <ClInclude Include="LegacyLaserShutterProperty.h" />
     <ClInclude Include="Logger.h" />
+    <ClInclude Include="MutableDeviceProperty.h" />
+    <ClInclude Include="NumericProperty.h" />
     <ClInclude Include="Property.h" />
+    <ClInclude Include="StaticStringProperty.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\MMDevice\MMDevice-SharedRuntime.vcxproj">
