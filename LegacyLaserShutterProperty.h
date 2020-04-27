@@ -23,7 +23,7 @@ public:
     LegacyLaserShutterProperty( const std::string& name, LaserDevice* laserDevice );
     virtual ~LegacyLaserShutterProperty();
 
-    virtual int FetchInto( std::string& string ) const;
+    virtual int GetValue( std::string& string ) const;
     virtual int Set( const std::string& value );
     
 private:

@@ -25,7 +25,7 @@ Property::Stereotype StaticStringProperty::GetStereotype() const
     return String;
 }
 
-int StaticStringProperty::FetchInto( std::string& string ) const
+int StaticStringProperty::GetValue( std::string& string ) const
 {
     string = value_;
     return return_code::ok;

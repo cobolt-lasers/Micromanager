@@ -22,7 +22,8 @@ public:
 
     LaserShutterProperty( const std::string& name, LaserDevice* laserDevice );
     
-    virtual int FetchInto( std::string& string ) const;
+    virtual int GetValue( std::string& string ) const;
+    virtual int Set( const std::string& );
 
 private:
 

@@ -30,9 +30,10 @@ public:
 
     virtual std::string ObjectString() const;
 
-protected:
+    using Property::GetValue;
+    virtual int GetValue( std::string& string ) const;
 
-    virtual int FetchInto( std::string& string ) const;
+protected:
 
     void ClearCache() const;
 

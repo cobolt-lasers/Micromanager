@@ -33,7 +33,7 @@ public:
      */
     void RegisterEnumerationItem( const std::string& deviceValue, const std::string& setCommand, const std::string& name );
 
-    virtual int FetchInto( std::string& string ) const;
+    virtual int GetValue( std::string& string ) const;
     virtual int Set( const std::string& guiValue );
 
 private:

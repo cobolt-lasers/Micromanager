@@ -34,7 +34,7 @@ public:
     {
         if ( !IsValidValue( value ) ) {
 
-            Logger::Instance()->LogError( "EnumerationProperty[" + GetName() + "]::FetchInto( ... ): No matching GUI value found for command value '" + value + "'" );
+            Logger::Instance()->LogError( "EnumerationProperty[" + GetName() + "]::GetValue( ... ): No matching GUI value found for command value '" + value + "'" );
             return return_code::invalid_value;
         }
 

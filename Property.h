@@ -49,14 +49,15 @@ public:
     virtual int IntroduceToGuiEnvironment( GuiEnvironment* );
 
     const std::string& GetName() const;
+
     std::string GetValue() const;
+    virtual int GetValue( std::string& string ) const = 0;
+
     Stereotype GetStereotype() const;
 
     virtual bool IsMutable() const;
     virtual int OnGuiSetAction( GuiProperty& );
     virtual int OnGuiGetAction( GuiProperty& guiProperty );
-
-    virtual int FetchInto( std::string& string ) const = 0;
 
     /**
      * \brief The property object represented in a string. For logging/debug purposes.

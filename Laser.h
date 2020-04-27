@@ -37,6 +37,7 @@ public:
 
     virtual ~Laser();
 
+    const std::string& GetId() const;
     const std::string& GetName() const;
     const std::string& GetWavelength() const;
 
@@ -60,6 +61,8 @@ private:
         ST_06_MLD,
         ST_05_Series
     };
+
+    static int NextId__;
 
     Laser( const std::string& name, const std::string& wavelength, LaserDevice* device );
 
@@ -90,19 +93,19 @@ private:
     void CreateModulationPowerSetpointProperty();
     void CreateAnalogImpedanceProperty();
     
-    static const char* Milliamperes;
-    static const char* Amperes;
-    static const char* Milliwatts;
-    static const char* Watts;
-
-    static const char* EnumerationItem_On;
-    static const char* EnumerationItem_Off;
-    static const char* EnumerationItem_Enabled;
-    static const char* EnumerationItem_Disabled;
-    
-    static const char* EnumerationItem_RunMode_ConstantCurrent;
-    static const char* EnumerationItem_RunMode_ConstantPower;
-    static const char* EnumerationItem_RunMode_Modulation;
+    static const std::string Milliamperes;
+    static const std::string Amperes;
+    static const std::string Milliwatts;
+    static const std::string Watts;
+                 
+    static const std::string EnumerationItem_On;
+    static const std::string EnumerationItem_Off;
+    static const std::string EnumerationItem_Enabled;
+    static const std::string EnumerationItem_Disabled;
+                 
+    static const std::string EnumerationItem_RunMode_ConstantCurrent;
+    static const std::string EnumerationItem_RunMode_ConstantPower;
+    static const std::string EnumerationItem_RunMode_Modulation;
 
     static void DecomposeModelString( std::string modelString, std::vector<std::string>& modelTokens );
 
@@ -114,6 +117,7 @@ private:
     
     std::map<std::string, cobolt::Property*> properties_;
     
+    std::string id_;
     std::string name_;
     std::string wavelength_;
     LaserDevice* device_;

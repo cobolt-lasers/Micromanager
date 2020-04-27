@@ -43,10 +43,10 @@ void EnumerationProperty::RegisterEnumerationItem( const std::string& deviceValu
     enumerationItems_.push_back( enumerationItem );
 }
 
-int EnumerationProperty::FetchInto( std::string& string ) const
+int EnumerationProperty::GetValue( std::string& string ) const
 {
     std::string deviceValue;
-    Parent::FetchInto( deviceValue );
+    Parent::GetValue( deviceValue );
 
     for ( enumeration_items_t::const_iterator enumerationItem = enumerationItems_.begin();
           enumerationItem != enumerationItems_.end();
@@ -60,7 +60,7 @@ int EnumerationProperty::FetchInto( std::string& string ) const
     
     SetToUnknownValue( string );
 
-    Logger::Instance()->LogError( "EnumerationProperty[" + GetName() + "]::FetchInto( ... ): No matching GUI value found for command value '" + deviceValue + "'" );
+    Logger::Instance()->LogError( "EnumerationProperty[" + GetName() + "]::GetValue( ... ): No matching GUI value found for command value '" + deviceValue + "'" );
     return return_code::error; // Not 'invalid_value', as the cause is not the user.
 }
 

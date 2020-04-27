@@ -29,7 +29,7 @@ const std::string& Property::GetName() const
 std::string Property::GetValue() const
 {
     std::string value;
-    FetchInto( value );
+    GetValue( value );
     return value;
 }
 
@@ -52,7 +52,7 @@ int Property::OnGuiSetAction( GuiProperty& )
 int Property::OnGuiGetAction( GuiProperty& guiProperty )
 {
     std::string string;
-    int returnCode = FetchInto( string );
+    int returnCode = GetValue( string );
 
     if ( returnCode != return_code::ok ) {
 

@@ -27,7 +27,7 @@ LegacyLaserShutterProperty::~LegacyLaserShutterProperty()
     }
 }
 
-int LegacyLaserShutterProperty::FetchInto( std::string& string ) const
+int LegacyLaserShutterProperty::GetValue( std::string& string ) const
 {
     if ( IsOpen() ) {
         string = Value_Open;

@@ -22,7 +22,7 @@ LaserShutterProperty::LaserShutterProperty( const std::string& name, LaserDevice
     RegisterEnumerationItem( "N/A", "l0", Value_Closed );
 }
 
-int LaserShutterProperty::FetchInto( std::string& string ) const
+int LaserShutterProperty::GetValue( std::string& string ) const
 {
     if ( isOpen_ ) {
         string = Value_Open;

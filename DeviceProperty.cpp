@@ -28,7 +28,7 @@ std::string DeviceProperty::ObjectString() const
     return Property::ObjectString() + "getCommand_ = " + getCommand_ + "; ";
 }
 
-int DeviceProperty::FetchInto( std::string& string ) const
+int DeviceProperty::GetValue( std::string& string ) const
 {
     int returnCode = return_code::ok;
 

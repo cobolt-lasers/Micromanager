@@ -23,7 +23,7 @@ public:
     StaticStringProperty( const std::string& name, const std::string& value );
     
     virtual Stereotype GetStereotype() const;
-    virtual int FetchInto( std::string& string ) const;
+    virtual int GetValue( std::string& string ) const;
     virtual std::string ObjectString() const;
 
 private:

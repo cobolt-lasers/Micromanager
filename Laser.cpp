@@ -13,19 +13,21 @@
 using namespace std;
 using namespace cobolt;
 
-const char* Laser::Milliamperes = "mA";
-const char* Laser::Amperes = "A";
-const char* Laser::Milliwatts = "mW";
-const char* Laser::Watts = "W";
+const std::string Laser::Milliamperes = "mA";
+const std::string Laser::Amperes = "A";
+const std::string Laser::Milliwatts = "mW";
+const std::string Laser::Watts = "W";
 
-const char* Laser::EnumerationItem_On = "on";
-const char* Laser::EnumerationItem_Off = "off";
-const char* Laser::EnumerationItem_Enabled = "enabled";
-const char* Laser::EnumerationItem_Disabled = "disabled";
+const std::string Laser::EnumerationItem_On = "on";
+const std::string Laser::EnumerationItem_Off = "off";
+const std::string Laser::EnumerationItem_Enabled = "enabled";
+const std::string Laser::EnumerationItem_Disabled = "disabled";
 
-const char* Laser::EnumerationItem_RunMode_ConstantCurrent = "Constant Current";
-const char* Laser::EnumerationItem_RunMode_ConstantPower = "Constant Power";
-const char* Laser::EnumerationItem_RunMode_Modulation = "Modulation";
+const std::string Laser::EnumerationItem_RunMode_ConstantCurrent = "Constant Current";
+const std::string Laser::EnumerationItem_RunMode_ConstantPower = "Constant Power";
+const std::string Laser::EnumerationItem_RunMode_Modulation = "Modulation";
+
+int Laser::NextId__ = 1;
 
 Laser* Laser::Create( LaserDevice* device )
 {
@@ -141,6 +143,11 @@ Laser::~Laser()
     properties_.clear();
 }
 
+const std::string& Laser::GetId() const
+{
+    return id_;
+}
+
 const std::string& Laser::GetName() const
 {
     return name_;
@@ -221,6 +228,7 @@ void Laser::DecomposeModelString( std::string modelString, std::vector<std::stri
 }
 
 Laser::Laser( const std::string& name, const std::string& wavelength, LaserDevice* device ) :
+    id_( std::to_string( (long double) NextId__++ ) ),
     name_( name ),
     wavelength_( wavelength ),
     device_( device ),
