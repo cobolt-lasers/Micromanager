@@ -27,6 +27,14 @@ LegacyLaserShutterProperty::~LegacyLaserShutterProperty()
     }
 }
 
+int LegacyLaserShutterProperty::IntroduceToGuiEnvironment( GuiEnvironment* environment )
+{
+    environment->RegisterAllowedGuiPropertyValue( GetName(), Value_Open.c_str() );
+    environment->RegisterAllowedGuiPropertyValue( GetName(), Value_Closed.c_str() );
+
+    return return_code::ok;
+}
+
 int LegacyLaserShutterProperty::GetValue( std::string& string ) const
 {
     if ( IsOpen() ) {
@@ -38,7 +46,7 @@ int LegacyLaserShutterProperty::GetValue( std::string& string ) const
     return return_code::ok;
 }
 
-int LegacyLaserShutterProperty::Set( const std::string& value )
+int LegacyLaserShutterProperty::SetValue( const std::string& value )
 {
     int returnCode = return_code::ok;
 
@@ -49,7 +57,7 @@ int LegacyLaserShutterProperty::Set( const std::string& value )
         if ( laserDevice_->SendCommand( "glc?", &savedLaserState_->currentSetpoint ) != return_code::ok ||
              laserDevice_->SendCommand( "gam?", &savedLaserState_->runMode ) != return_code::ok ) {
 
-            Logger::Instance()->LogError( "LegacyLaserShutterProperty[ " + GetName() + " ]::Set( '" + value + "' ): Failed to save laser state" );
+            Logger::Instance()->LogError( "LegacyLaserShutterProperty[ " + GetName() + " ]::SetValue( '" + value + "' ): Failed to save laser state" );
             return return_code::error;
         }
 
@@ -70,7 +78,7 @@ int LegacyLaserShutterProperty::Set( const std::string& value )
 
     } else {
 
-        Logger::Instance()->LogMessage( "LegacyLaserShutterProperty[" + GetName() + "]::Set( '" + value + "' ): Ignored request as requested state is already set", true );
+        Logger::Instance()->LogMessage( "LegacyLaserShutterProperty[" + GetName() + "]::SetValue( '" + value + "' ): Ignored request as requested state is already set", true );
     }
 
     return returnCode;

@@ -8,7 +8,16 @@
 
 #include <assert.h>
 #include "Laser.h"
-#include "Property.h"
+#include "Logger.h"
+
+#include "LaserDevice.h"
+#include "StaticStringProperty.h"
+#include "DeviceProperty.h"
+#include "MutableDeviceProperty.h"
+#include "EnumerationProperty.h"
+#include "NumericProperty.h"
+#include "LaserShutterProperty.h"
+#include "LegacyLaserShutterProperty.h"
 
 using namespace std;
 using namespace cobolt;
@@ -57,19 +66,19 @@ Laser* Laser::Create( LaserDevice* device )
 
         laser->CreateNameProperty();
         laser->CreateModelProperty();
-        laser->CreateWavelengthProperty();
-        laser->CreateSerialNumberProperty();
         laser->CreateFirmwareVersionProperty();
-        laser->CreateOperatingHoursProperty();
-        laser->CreateCurrentSetpointProperty();
-        laser->CreateCurrentReadingProperty();
-        laser->CreatePowerSetpointProperty();
-        laser->CreatePowerReadingProperty();
+        laser->CreateWavelengthProperty();
         laser->CreateLaserOnOffProperty();
         laser->CreateShutterProperty();
         laser->CreateRunModeProperty<ST_06_DPL>();
+        laser->CreatePowerSetpointProperty();
+        laser->CreatePowerReadingProperty();
+        laser->CreateCurrentSetpointProperty();
+        laser->CreateCurrentReadingProperty();
         laser->CreateDigitalModulationProperty();
         laser->CreateAnalogModulationFlagProperty();
+        laser->CreateOperatingHoursProperty();
+        laser->CreateSerialNumberProperty();
 
     } else if ( modelString.find( "-06-01-" ) != std::string::npos ||
                 modelString.find( "-06-03-" ) != std::string::npos ) {
@@ -81,21 +90,21 @@ Laser* Laser::Create( LaserDevice* device )
 
         laser->CreateNameProperty();
         laser->CreateModelProperty();
-        laser->CreateWavelengthProperty();
-        laser->CreateSerialNumberProperty();
         laser->CreateFirmwareVersionProperty();
-        laser->CreateOperatingHoursProperty();
-        laser->CreateCurrentSetpointProperty();
-        laser->CreateCurrentReadingProperty();
-        laser->CreatePowerSetpointProperty();
-        laser->CreatePowerReadingProperty();
+        laser->CreateWavelengthProperty();
         laser->CreateLaserOnOffProperty();
         laser->CreateShutterProperty();
         laser->CreateRunModeProperty<ST_06_MLD>();
+        laser->CreatePowerSetpointProperty();
+        laser->CreatePowerReadingProperty();
+        laser->CreateCurrentSetpointProperty();
+        laser->CreateCurrentReadingProperty();
         laser->CreateDigitalModulationProperty();
         laser->CreateAnalogModulationFlagProperty();
-        laser->CreateModulationPowerSetpointProperty();
         laser->CreateAnalogImpedanceProperty();
+        laser->CreateModulationPowerSetpointProperty();
+        laser->CreateOperatingHoursProperty();
+        laser->CreateSerialNumberProperty();
         
     } else if ( modelString.find( "-05-" ) != std::string::npos ) {
 
@@ -106,17 +115,17 @@ Laser* Laser::Create( LaserDevice* device )
 
         laser->CreateNameProperty();
         laser->CreateModelProperty();
-        laser->CreateWavelengthProperty();
-        laser->CreateSerialNumberProperty();
         laser->CreateFirmwareVersionProperty();
-        laser->CreateOperatingHoursProperty();
-        laser->CreateCurrentSetpointProperty();
-        laser->CreateCurrentReadingProperty();
-        laser->CreatePowerSetpointProperty();
-        laser->CreatePowerReadingProperty();
+        laser->CreateWavelengthProperty();
         laser->CreateLaserOnOffProperty();
         laser->CreateShutterProperty();
         laser->CreateRunModeProperty<ST_05_Series>();
+        laser->CreatePowerSetpointProperty();
+        laser->CreatePowerReadingProperty();
+        laser->CreateCurrentSetpointProperty();
+        laser->CreateCurrentReadingProperty();
+        laser->CreateOperatingHoursProperty();
+        laser->CreateSerialNumberProperty();
         
     } else {
 
@@ -125,15 +134,17 @@ Laser* Laser::Create( LaserDevice* device )
     
     Logger::Instance()->LogMessage( "Created laser '" + laser->GetName() + "'", true );
 
+    Property::ResetIdGenerator();
+
     return laser;
 }
 
 Laser::~Laser()
 {
-    const bool pausedPropertyIsPublic = ( pausedProperty_ != NULL && properties_.find( pausedProperty_->GetName() ) != properties_.end() );
+    const bool pausedPropertyIsPublic = ( shutter_ != NULL && properties_.find( shutter_->GetName() ) != properties_.end() );
     
     if ( !pausedPropertyIsPublic ) {
-        delete pausedProperty_;
+        delete shutter_;
     }
 
     for ( PropertyIterator it = GetPropertyIteratorBegin(); it != GetPropertyIteratorEnd(); it++ ) {
@@ -160,7 +171,7 @@ const std::string& Laser::GetWavelength() const
 
 void Laser::SetOn( const bool on )
 {
-    laserOnOffProperty->Set( ( on ? EnumerationItem_On : EnumerationItem_Off ) );
+    laserOnOffProperty->SetValue( ( on ? EnumerationItem_On : EnumerationItem_Off ) );
     
     // Shutter closed by default (this is also assumed when setting up the shutter property):
     if ( on ) {
@@ -170,7 +181,7 @@ void Laser::SetOn( const bool on )
 
 void Laser::SetShutterOpen( const bool open )
 {
-    pausedProperty_->Set( open ? LaserShutterProperty::Value_Open : LaserShutterProperty::Value_Closed );
+    shutter_->SetValue( open ? LaserShutterProperty::Value_Open : LaserShutterProperty::Value_Closed );
 }
 
 bool Laser::IsOn() const
@@ -180,7 +191,7 @@ bool Laser::IsOn() const
 
 bool Laser::IsPaused() const
 {
-    return ( pausedProperty_->GetValue() == EnumerationItem_On );
+    return ( shutter_->GetValue() == EnumerationItem_On );
 }
 
 Property* Laser::GetProperty( const std::string& name ) const
@@ -235,14 +246,6 @@ Laser::Laser( const std::string& name, const std::string& wavelength, LaserDevic
     currentUnit_( "?" ),
     powerUnit_( "?" )
 {
-    CreateNameProperty();
-    CreateModelProperty();
-    CreateWavelengthProperty();
-    CreateSerialNumberProperty();
-    CreateFirmwareVersionProperty();
-    CreateOperatingHoursProperty();
-    CreateShutterProperty();
-    CreateLaserOnOffProperty();
 }
 
 void Laser::CreateNameProperty()
@@ -333,12 +336,12 @@ void Laser::CreateLaserOnOffProperty()
 void Laser::CreateShutterProperty()
 {
     if ( IsPauseCommandSupported() ) {
-        pausedProperty_ = new LaserShutterProperty( "Emission Status", device_ );
+        shutter_ = new LaserShutterProperty( "Emission Status", device_ );
     } else {
-        pausedProperty_ = new LegacyLaserShutterProperty( "Emission Status", device_ );
+        shutter_ = new LegacyLaserShutterProperty( "Emission Status", device_ );
     }
     
-    RegisterPublicProperty( pausedProperty_ );
+    RegisterPublicProperty( shutter_ );
 }
 
 template <> void Laser::CreateRunModeProperty<Laser::ST_05_Series>()

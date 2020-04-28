@@ -33,4 +33,16 @@ int LaserShutterProperty::GetValue( std::string& string ) const
     return return_code::ok;
 }
 
+int LaserShutterProperty::SetValue( const std::string& value )
+{
+    int returnCode = EnumerationProperty::SetValue( value );
+
+    if ( returnCode == return_code::ok ) {
+        isOpen_ = ( value == Value_Open );
+        return return_code::ok;
+    }
+
+    return returnCode;
+}
+
 NAMESPACE_COBOLT_END

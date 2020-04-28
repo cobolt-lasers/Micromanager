@@ -30,15 +30,15 @@ public:
         return environment->RegisterAllowedGuiPropertyRange( GetName(), min_, max_ );
     }
 
-    virtual int Set( const std::string& value )
+    virtual int SetValue( const std::string& value )
     {
         if ( !IsValidValue( value ) ) {
 
-            Logger::Instance()->LogError( "EnumerationProperty[" + GetName() + "]::GetValue( ... ): No matching GUI value found for command value '" + value + "'" );
+            Logger::Instance()->LogError( "NumericProperty[" + GetName() + "]::SetValue( ... ): Invalid value '" + value + "'" );
             return return_code::invalid_value;
         }
 
-        return laserDevice_->SendCommand( setCommandBase_ + value );
+        return laserDevice_->SendCommand( setCommandBase_ + " " + value );
     }
     
 protected:

@@ -31,7 +31,7 @@ int MutableDeviceProperty::OnGuiSetAction( GuiProperty& guiProperty )
 
     guiProperty.Get( value );
 
-    const int returnCode = Set( value );
+    const int returnCode = SetValue( value );
 
     if ( returnCode != return_code::ok ) {
 

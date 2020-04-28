@@ -73,7 +73,7 @@ public:
 private:
 
     MM::PropertyType ResolvePropertyType( const cobolt::Property::Stereotype ) const;
-    int ExposeToGui( const cobolt::Property* property, const std::string& groupPrefix, const std::string& orderPrefix );
+    int ExposeToGui( const cobolt::Property* property );
     
     cobolt::Laser* laser_;
 

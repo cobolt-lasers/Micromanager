@@ -44,6 +44,11 @@ public:
 
     enum Stereotype { String, Float, Integer };
     
+    static void ResetIdGenerator()
+    {
+        NextPropertyId_ = 1;
+    }
+
     Property( const Stereotype stereotype, const std::string& name );
     
     virtual int IntroduceToGuiEnvironment( GuiEnvironment* );
@@ -70,6 +75,8 @@ protected:
     void SetToUnknownValue( GuiProperty& guiProperty ) const;
     
 private:
+
+    static int NextPropertyId_;
 
     Stereotype stereotype_;
     std::string name_;

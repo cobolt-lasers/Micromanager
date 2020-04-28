@@ -64,7 +64,7 @@ int EnumerationProperty::GetValue( std::string& string ) const
     return return_code::error; // Not 'invalid_value', as the cause is not the user.
 }
 
-int EnumerationProperty::Set( const std::string& enumerationItemName )
+int EnumerationProperty::SetValue( const std::string& enumerationItemName )
 {
     for ( enumeration_items_t::const_iterator enumerationItem = enumerationItems_.begin();
           enumerationItem != enumerationItems_.end();
@@ -75,7 +75,7 @@ int EnumerationProperty::Set( const std::string& enumerationItemName )
         }
     }
 
-    Logger::Instance()->LogError( "EnumerationProperty[ " + GetName() + " ]::Set(): Invalid enumeration item '" + enumerationItemName + "'" );
+    Logger::Instance()->LogError( "EnumerationProperty[ " + GetName() + " ]::SetValue(): Invalid enumeration item '" + enumerationItemName + "'" );
     return return_code::error;
 }
 

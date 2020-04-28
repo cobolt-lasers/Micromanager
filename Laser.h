@@ -15,17 +15,12 @@
 #include <vector>
 
 #include "base.h"
-#include "Logger.h"
-#include "LaserDevice.h"
-#include "StaticStringProperty.h"
-#include "DeviceProperty.h"
-#include "MutableDeviceProperty.h"
-#include "EnumerationProperty.h"
-#include "NumericProperty.h"
-#include "LaserShutterProperty.h"
-#include "LegacyLaserShutterProperty.h"
+#include "Property.h"
 
 NAMESPACE_COBOLT_BEGIN
+
+class LaserDevice;
+class MutableDeviceProperty;
 
 class Laser
 {
@@ -126,7 +121,7 @@ private:
     std::string powerUnit_;
 
     MutableDeviceProperty* laserOnOffProperty;
-    MutableDeviceProperty* pausedProperty_;
+    MutableDeviceProperty* shutter_;
 };
 
 NAMESPACE_COBOLT_END

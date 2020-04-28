@@ -125,12 +125,9 @@ int CoboltOfficial::Initialize()
         return cobolt::return_code::error;
     }
 
-    int propertyNumber = 1;
     for ( Laser::PropertyIterator it = laser_->GetPropertyIteratorBegin(); it != laser_->GetPropertyIteratorEnd(); it++ ) {
 
-        std::string propertyNumberStr = std::to_string( (long double) propertyNumber );
-        std::string zeroFilledPropertyNumberStr = std::string( 2 - propertyNumberStr.length(), '0' ) + propertyNumberStr;
-        ExposeToGui( it->second, laser_->GetId(), zeroFilledPropertyNumberStr );
+        ExposeToGui( it->second );
         it->second->IntroduceToGuiEnvironment( this );
     }
 
@@ -315,11 +312,9 @@ MM::PropertyType CoboltOfficial::ResolvePropertyType( const cobolt::Property::St
     return MM::Undef;
 }
 
-int CoboltOfficial::ExposeToGui( const Property* property, const std::string& groupPrefix, const std::string& orderPrefix )
+int CoboltOfficial::ExposeToGui( const Property* property )
 {
     const std::string initialValue = property->GetValue();
-
-    std::string propertyName = groupPrefix + "-" + orderPrefix + " - " + property->GetName();
 
     CPropertyAction* action = new CPropertyAction( this, &CoboltOfficial::OnPropertyAction_Laser );
     const int returnCode = CreateProperty(

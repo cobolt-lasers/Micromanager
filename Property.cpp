@@ -11,10 +11,15 @@
 
 NAMESPACE_COBOLT_BEGIN
 
+int Property::NextPropertyId_ = 1;
+
 Property::Property( const Stereotype stereotype, const std::string& name ) :
     stereotype_( stereotype ),
     name_( name )
-{}
+{
+    const std::string propertyIdStr = std::to_string( (long double) NextPropertyId_++ );
+    name_ = ( std::string( 2 - propertyIdStr.length(), '0' ) + propertyIdStr ) + "-" + name;
+}
 
 int Property::IntroduceToGuiEnvironment( GuiEnvironment* )
 {

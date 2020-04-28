@@ -23,8 +23,10 @@ public:
     LegacyLaserShutterProperty( const std::string& name, LaserDevice* laserDevice );
     virtual ~LegacyLaserShutterProperty();
 
+    virtual int IntroduceToGuiEnvironment( GuiEnvironment* environment );
+
     virtual int GetValue( std::string& string ) const;
-    virtual int Set( const std::string& value );
+    virtual int SetValue( const std::string& value );
     
 private:
 

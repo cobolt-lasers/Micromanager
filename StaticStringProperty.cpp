@@ -6,14 +6,9 @@
  * \copyright   Cobolt AB, 2020. All rights reserved. // TODO: Set proper license
  */
 
-#include "Property.h"
-#include "Laser.h"
+#include "StaticStringProperty.h"
 
 NAMESPACE_COBOLT_BEGIN
-
-/**
- * \brief Represents a property whose value is set immediately on creation and will not change after that.
- */
 
 StaticStringProperty::StaticStringProperty( const std::string& name, const std::string& value ) :
     Property( Property::String, name ),

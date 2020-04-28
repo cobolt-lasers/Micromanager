@@ -23,7 +23,7 @@ public:
 
     virtual int IntroduceToGuiEnvironment( GuiEnvironment* );
     virtual bool IsMutable() const;
-    virtual int Set( const std::string& ) = 0;
+    virtual int SetValue( const std::string& ) = 0;
     virtual int OnGuiSetAction( GuiProperty& guiProperty );
 };
 
