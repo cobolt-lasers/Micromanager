@@ -42,7 +42,7 @@
     <ClCompile Include="DeviceProperty.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="LegacyLaserShutterProperty.cpp">
+    <ClCompile Include="NoShutterCommandLegacyFix.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -83,7 +83,7 @@
     <ClInclude Include="StaticStringProperty.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="LegacyLaserShutterProperty.h">
+    <ClInclude Include="NoShutterCommandLegacyFix.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

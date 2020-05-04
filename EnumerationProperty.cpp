@@ -76,7 +76,22 @@ int EnumerationProperty::SetValue( const std::string& enumerationItemName )
     }
 
     Logger::Instance()->LogError( "EnumerationProperty[ " + GetName() + " ]::SetValue(): Invalid enumeration item '" + enumerationItemName + "'" );
-    return return_code::error;
+    return return_code::invalid_property_value;
+}
+
+
+bool EnumerationProperty::IsValidValue( const std::string& enumerationItemName )
+{
+    for ( enumeration_items_t::const_iterator enumerationItem = enumerationItems_.begin();
+        enumerationItem != enumerationItems_.end();
+        enumerationItem++ ) {
+
+        if ( enumerationItemName == enumerationItem->name ) {
+            return true;
+        }
+    }
+
+    return false; 
 }
 
 NAMESPACE_COBOLT_END

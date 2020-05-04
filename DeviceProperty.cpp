@@ -61,4 +61,9 @@ void DeviceProperty::ClearCache() const
     cachedValue_.clear();
 }
 
+const std::string& DeviceProperty::GetCachedValue() const
+{
+    return cachedValue_;
+}
+
 NAMESPACE_COBOLT_END

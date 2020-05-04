@@ -28,8 +28,12 @@ bool MutableDeviceProperty::IsMutable() const
 int MutableDeviceProperty::OnGuiSetAction( GuiProperty& guiProperty )
 {
     std::string value;
-
     guiProperty.Get( value );
+
+    // Protect against unnecessary eeprom writes:
+    if ( value == GetCachedValue() ) {
+        return return_code::ok;
+    }
 
     const int returnCode = SetValue( value );
 

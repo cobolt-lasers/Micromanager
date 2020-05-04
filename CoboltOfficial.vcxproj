@@ -143,8 +143,8 @@
     <ClCompile Include="EnumerationProperty.cpp" />
     <ClCompile Include="Laser.cpp" />
     <ClCompile Include="LaserShutterProperty.cpp" />
-    <ClCompile Include="LegacyLaserShutterProperty.cpp" />
     <ClCompile Include="MutableDeviceProperty.cpp" />
+    <ClCompile Include="NoShutterCommandLegacyFix.cpp" />
     <ClCompile Include="NumericProperty.cpp" />
     <ClCompile Include="Property.cpp" />
     <ClCompile Include="StaticStringProperty.cpp" />
@@ -157,9 +157,9 @@
     <ClInclude Include="Laser.h" />
     <ClInclude Include="LaserDevice.h" />
     <ClInclude Include="LaserShutterProperty.h" />
-    <ClInclude Include="LegacyLaserShutterProperty.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="MutableDeviceProperty.h" />
+    <ClInclude Include="NoShutterCommandLegacyFix.h" />
     <ClInclude Include="NumericProperty.h" />
     <ClInclude Include="Property.h" />
     <ClInclude Include="StaticStringProperty.h" />

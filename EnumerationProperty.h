@@ -36,6 +36,10 @@ public:
     virtual int GetValue( std::string& string ) const;
     virtual int SetValue( const std::string& guiValue );
 
+protected:
+
+    bool IsValidValue( const std::string& guiValue );
+
 private:
 
     struct EnumerationItem

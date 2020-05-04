@@ -26,7 +26,7 @@ public:
      *        changed on the Micromanager side. Thus properties that can change
      *        on laser side should NOT be cached.
      */
-    void SetCaching( const bool enabled );
+    virtual void SetCaching( const bool enabled );
 
     virtual std::string ObjectString() const;
 
@@ -36,6 +36,7 @@ public:
 protected:
 
     void ClearCache() const;
+    const std::string& GetCachedValue() const;
 
     LaserDevice* laserDevice_;
 

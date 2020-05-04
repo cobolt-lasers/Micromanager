@@ -40,7 +40,7 @@ public:
     void SetShutterOpen( const bool );
 
     bool IsOn() const;
-    bool IsPaused() const;
+    bool IsShutterOpen() const;
 
     Property* GetProperty( const std::string& name ) const;
     Property* GetProperty( const std::string& name );
@@ -104,7 +104,7 @@ private:
 
     static void DecomposeModelString( std::string modelString, std::vector<std::string>& modelTokens );
 
-    bool IsPauseCommandSupported();
+    bool IsShutterCommandSupported();
 
     void CreateGenericProperties();
 

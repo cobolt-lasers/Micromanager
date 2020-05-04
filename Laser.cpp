@@ -17,7 +17,7 @@
 #include "EnumerationProperty.h"
 #include "NumericProperty.h"
 #include "LaserShutterProperty.h"
-#include "LegacyLaserShutterProperty.h"
+#include "NoShutterCommandLegacyFix.h"
 
 using namespace std;
 using namespace cobolt;
@@ -189,9 +189,9 @@ bool Laser::IsOn() const
     return ( laserOnOffProperty->GetValue() ==  EnumerationItem_On );
 }
 
-bool Laser::IsPaused() const
+bool Laser::IsShutterOpen() const
 {
-    return ( shutter_->GetValue() == EnumerationItem_On );
+    return ( shutter_->GetValue() == LaserShutterProperty::Value_Open );
 }
 
 Property* Laser::GetProperty( const std::string& name ) const
@@ -289,7 +289,14 @@ void Laser::CreateCurrentSetpointProperty()
 
     const double maxCurrentSetpoint = atof( maxCurrentSetpointResponse.c_str() );
 
-    MutableDeviceProperty* property = new NumericProperty<double>( "Current Setpoint [" + currentUnit_ + "]", device_, "glc?", "slc", 0.0f, maxCurrentSetpoint );
+    MutableDeviceProperty* property;
+   
+    if ( IsShutterCommandSupported() ) {
+        property = new NumericProperty<double>( "Current Setpoint [" + currentUnit_ + "]", device_, "glc?", "slc", 0.0f, maxCurrentSetpoint );
+    } else {
+        property = new legacy::no_shutter_command::LaserCurrentProperty( "Current Setpoint [" + currentUnit_ + "]", device_, "glc?", "slc", 0.0f, maxCurrentSetpoint, this );
+    }
+
     RegisterPublicProperty( property );
 }
 
@@ -335,10 +342,10 @@ void Laser::CreateLaserOnOffProperty()
 
 void Laser::CreateShutterProperty()
 {
-    if ( IsPauseCommandSupported() ) {
+    if ( IsShutterCommandSupported() ) {
         shutter_ = new LaserShutterProperty( "Emission Status", device_ );
     } else {
-        shutter_ = new LegacyLaserShutterProperty( "Emission Status", device_ );
+        shutter_ = new legacy::no_shutter_command::LaserShutterProperty( "Emission Status", device_ );
     }
     
     RegisterPublicProperty( shutter_ );
@@ -357,7 +364,14 @@ template <> void Laser::CreateRunModeProperty<Laser::ST_05_Series>()
 
 template <> void Laser::CreateRunModeProperty<Laser::ST_06_DPL>()
 {
-    EnumerationProperty* property = new EnumerationProperty( "Run Mode", device_, "gam?" );
+    EnumerationProperty* property;
+    
+    if ( IsShutterCommandSupported() ) {
+        property = new EnumerationProperty( "Run Mode", device_, "gam?" );
+    } else {
+        property = new legacy::no_shutter_command::LaserRunModeProperty( "Run Mode", device_, "gam?", this );
+    }
+    
     property->SetCaching( false );
 
     property->RegisterEnumerationItem( "0", "sam 0", EnumerationItem_RunMode_ConstantCurrent );
@@ -419,7 +433,7 @@ void Laser::CreateAnalogImpedanceProperty()
     RegisterPublicProperty( property );
 }
 
-bool Laser::IsPauseCommandSupported()
+bool Laser::IsShutterCommandSupported()
 {
     std::string response;
     device_->SendCommand( "l0r", &response );

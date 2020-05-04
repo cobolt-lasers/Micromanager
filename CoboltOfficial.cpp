@@ -173,7 +173,7 @@ int CoboltOfficial::SetOpen( bool open )
  */
 int CoboltOfficial::GetOpen( bool& open )
 {
-    open = ( laser_->IsOn() && !laser_->IsPaused() );
+    open = ( laser_->IsOn() && !laser_->IsShutterOpen() );
 
     return cobolt::return_code::ok;
 }
