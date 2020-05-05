@@ -59,9 +59,6 @@
     <ClInclude Include="Property.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="LaserDevice.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="base.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -84,6 +81,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="NoShutterCommandLegacyFix.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="LaserDriver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

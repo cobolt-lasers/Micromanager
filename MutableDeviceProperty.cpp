@@ -11,8 +11,8 @@
 
 NAMESPACE_COBOLT_BEGIN
 
-MutableDeviceProperty::MutableDeviceProperty( const Property::Stereotype stereotype, const std::string& name, LaserDevice* laserDevice, const std::string& getCommand ) :
-    DeviceProperty( stereotype, name, laserDevice, getCommand )
+MutableDeviceProperty::MutableDeviceProperty( const Property::Stereotype stereotype, const std::string& name, LaserDriver* laserDriver, const std::string& getCommand ) :
+    DeviceProperty( stereotype, name, laserDriver, getCommand )
 {}
 
 int MutableDeviceProperty::IntroduceToGuiEnvironment( GuiEnvironment* )

@@ -15,10 +15,11 @@ using namespace legacy::no_shutter_command;
 const std::string LaserShutterProperty::Value_Open = "open";
 const std::string LaserShutterProperty::Value_Closed = "closed";
 
-LaserShutterProperty::LaserShutterProperty( const std::string& name, LaserDevice* laserDevice ) :
-    MutableDeviceProperty( Property::String, name, laserDevice, "N/A" ),
+LaserShutterProperty::LaserShutterProperty( const std::string& name, LaserDriver* laserDriver, Laser* laser ) :
+    MutableDeviceProperty( Property::String, name, laserDriver, "N/A" ),
+    laser_( laser ),
     isOpen_( false ),
-    laserStatePersistence_( laserDevice )
+    laserStatePersistence_( laserDriver )
 {
     if ( laserStatePersistence_.PersistedStateExists() ) { // Without this GetIsShutterOpen() may return false negatives.
 
@@ -58,53 +59,33 @@ int LaserShutterProperty::GetValue( std::string& string ) const
 
 int LaserShutterProperty::SetValue( const std::string& value )
 {
+    if ( !laser_->IsOn() && value == Value_Open ) { // The Laser object will call with value == closed, and we have to allow that even if IsOn() is false.
+        return return_code::property_not_settable_in_current_state;
+    }
+    
     int returnCode = return_code::ok;
 
     if ( value == Value_Closed ) { // Shutter 'closed' requested.
 
-        std::string currentRunmode;
-        
-        returnCode = laserStatePersistence_.GetRunmode( currentRunmode );
-        
-        if ( returnCode != return_code::ok ) {
-            return returnCode;
-        }
-
-        returnCode = laserDevice_->SendCommand( "ecc" );
-
-        if ( returnCode == return_code::ok ) {
-            returnCode = laserDevice_->SendCommand( "slc 0" );
-        }
-
-        if ( returnCode == return_code::ok && isOpen_ ) {
+        if ( isOpen_ ) { // Only do this if we're really open, otherwise we will save the 'closed' state.
 
             isOpen_ = false;
             SaveState();
         }
 
-    } else if ( value == Value_Open ) { // Shutter 'open' requested.
+        returnCode = laserDriver_->SendCommand( "ecc" );
+        if ( returnCode != return_code::ok ) { return returnCode; }
         
-        std::string runmode, currentSetpoint;
-
-        laserStatePersistence_.GetRunmode( runmode );
-        laserStatePersistence_.GetCurrentSetpoint( currentSetpoint );
-
-        std::string setRunmodeCommand, setCurrentSetpointCommand;
-
-        setRunmodeCommand = "sam " + runmode;
-        setCurrentSetpointCommand = "slc " + currentSetpoint;
-
-        returnCode = laserDevice_->SendCommand( setRunmodeCommand );
+        returnCode = laserDriver_->SendCommand( "slc 0" );
         if ( returnCode != return_code::ok ) { return returnCode; }
 
-        returnCode = laserDevice_->SendCommand( setCurrentSetpointCommand );
-        if ( returnCode != return_code::ok ) { return returnCode; }
+    } else if ( value == Value_Open ) { // Shutter 'open' requested.
         
         // Only if not already open:
         if ( !isOpen_ ) {
 
             isOpen_ = true;
-            SaveState();
+            RestoreState();
         }
 
     } else {
@@ -121,10 +102,10 @@ int LaserShutterProperty::SaveState()
 
     std::string runmode, currentSetpoint;
     
-    returnCode = laserDevice_->SendCommand( "gam?", &runmode );
+    returnCode = laserDriver_->SendCommand( "gam?", &runmode );
     if ( returnCode != return_code::ok ) { return returnCode; }
 
-    laserDevice_->SendCommand( "glc?", &currentSetpoint );
+    laserDriver_->SendCommand( "glc?", &currentSetpoint );
     if ( returnCode != return_code::ok ) { return returnCode; }
 
     laserStatePersistence_.PersistState( isOpen_, runmode, currentSetpoint );
@@ -149,10 +130,10 @@ int LaserShutterProperty::RestoreState()
     setRunmodeCommand = "sam " + runmode;
     setCurrentSetpointCommand = "slc " + currentSetpoint;
 
-    returnCode = laserDevice_->SendCommand( setRunmodeCommand );
+    returnCode = laserDriver_->SendCommand( setRunmodeCommand );
     if ( returnCode != return_code::ok ) { return returnCode; }
 
-    returnCode = laserDevice_->SendCommand( setCurrentSetpointCommand );
+    returnCode = laserDriver_->SendCommand( setCurrentSetpointCommand );
     if ( returnCode != return_code::ok ) { return returnCode; }
 
     return returnCode;

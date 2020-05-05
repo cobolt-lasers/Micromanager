@@ -14,12 +14,13 @@ NAMESPACE_COBOLT_BEGIN
 const std::string LaserShutterProperty::Value_Open = "open";
 const std::string LaserShutterProperty::Value_Closed = "closed";
 
-LaserShutterProperty::LaserShutterProperty( const std::string& name, LaserDevice* laserDevice ) :
-    EnumerationProperty( name, laserDevice, "N/A" ),
+LaserShutterProperty::LaserShutterProperty( const std::string& name, LaserDriver* laserDriver, Laser* laser ) :
+    EnumerationProperty( name, laserDriver, "N/A" ),
+    laser_( laser ),
     isOpen_( false )
 {
-    RegisterEnumerationItem( "N/A", "l1", Value_Open );
-    RegisterEnumerationItem( "N/A", "l0", Value_Closed );
+    RegisterEnumerationItem( "N/A", "l1r", Value_Open );
+    RegisterEnumerationItem( "N/A", "l0r", Value_Closed );
 }
 
 int LaserShutterProperty::GetValue( std::string& string ) const
@@ -35,6 +36,10 @@ int LaserShutterProperty::GetValue( std::string& string ) const
 
 int LaserShutterProperty::SetValue( const std::string& value )
 {
+    if ( !laser_->IsOn() ) {
+        return return_code::property_not_settable_in_current_state;
+    }
+
     int returnCode = EnumerationProperty::SetValue( value );
 
     if ( returnCode == return_code::ok ) {

@@ -10,7 +10,6 @@
 #define __BASE_H
 
 #include <vector>
-
 #define NAMESPACE_COBOLT_BEGIN namespace cobolt {
 #define NAMESPACE_COBOLT_END   }
 
@@ -29,6 +28,7 @@ namespace return_code
     const int serial_port_undefined = 101002;
     const int laser_off = 101003;
     const int invalid_value = 101004;
+    const int property_not_settable_in_current_state = 101005;
 }
 
 NAMESPACE_COBOLT_END

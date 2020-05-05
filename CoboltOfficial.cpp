@@ -80,11 +80,12 @@ CoboltOfficial::CoboltOfficial() :
     assert( cobolt::return_code::unsupported_command == DEVICE_UNSUPPORTED_COMMAND );
     
     // Map cobolt specific error codes to readable strings:
-    SetErrorText( cobolt::return_code::illegal_port_change,     "Port change not allowed."       );
-    SetErrorText( cobolt::return_code::laser_off,               "Laser is off."                  );
-    SetErrorText( cobolt::return_code::invalid_value,           "Invalid value"                  );
-    SetErrorText( cobolt::return_code::serial_port_undefined,   "No valid serial port selected." );
-
+    SetErrorText( cobolt::return_code::illegal_port_change,                     "Port change not allowed."       );
+    SetErrorText( cobolt::return_code::laser_off,                               "Laser is off."                  );
+    SetErrorText( cobolt::return_code::invalid_value,                           "Invalid value"                  );
+    SetErrorText( cobolt::return_code::serial_port_undefined,                   "No valid serial port selected." );
+    SetErrorText( cobolt::return_code::property_not_settable_in_current_state,  "Change of this property not allowed in current state." );
+    
     // Create non-laser properties:
     CreateProperty( MM::g_Keyword_Name,         g_DeviceName,               MM::String, true );
     CreateProperty( "Vendor",                   g_DeviceVendorName,         MM::String, true );

@@ -10,7 +10,7 @@
 #define __COBOLT__PROPERTY_H
 
 #include "base.h"
-#include "LaserDevice.h"
+#include "LaserDriver.h"
 
 NAMESPACE_COBOLT_BEGIN
 

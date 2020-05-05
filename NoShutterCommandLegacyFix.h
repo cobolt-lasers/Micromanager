@@ -23,14 +23,14 @@ namespace legacy
         { 
         public:
 
-            PersistedLaserState( LaserDevice* laserDevice ) :
-                laserDevice_( laserDevice )
+            PersistedLaserState( LaserDriver* laserDriver ) :
+                laserDriver_( laserDriver )
             {}
 
             bool PersistedStateExists() const
             {
                 std::string persistedValue;
-                laserDevice_->SendCommand( "gdsn?", &persistedValue );
+                laserDriver_->SendCommand( "gdsn?", &persistedValue );
                 return IsValidPersistedState( persistedValue );
             }
             
@@ -43,7 +43,7 @@ namespace legacy
                 sprintf( valueToSave, "MM[%s;%s;%s]", isShutterOpenStr, runmode.c_str(), currentSetpoint.c_str() );
                 const std::string saveCommand = "sdsn " + std::string( valueToSave );
 
-                return laserDevice_->SendCommand( saveCommand );
+                return laserDriver_->SendCommand( saveCommand );
             }
 
             int PersistCurrentSetpoint( const std::string& currentSetpoint )
@@ -55,7 +55,7 @@ namespace legacy
                 sprintf( valueToSave, "MM[%s;%s;%s]", isShutterOpenStr, runmode.c_str(), currentSetpoint.c_str() );
                 const std::string saveCommand = "sdsn " + std::string( valueToSave );
 
-                return laserDevice_->SendCommand( saveCommand );
+                return laserDriver_->SendCommand( saveCommand );
             }
 
             int PersistState( const bool isShutterOpen, const std::string& runmode, const std::string& currentSetpoint )
@@ -64,7 +64,7 @@ namespace legacy
                 sprintf( valueToSave, "MM[%s;%s;%s]", ( isShutterOpen ? "1" : "0" ), runmode.c_str(), currentSetpoint.c_str() );
                 const std::string saveCommand = "sdsn " + std::string( valueToSave );
 
-                return laserDevice_->SendCommand( saveCommand );
+                return laserDriver_->SendCommand( saveCommand );
             }
 
             int GetIsShutterOpen( bool& isShutterOpen ) const
@@ -96,7 +96,7 @@ namespace legacy
             int Fetch( std::string* isShutterOpen, std::string* runmode, std::string* currentSetpoint ) const
             {
                 std::string persistedValue;
-                laserDevice_->SendCommand( "gdsn?", &persistedValue );
+                laserDriver_->SendCommand( "gdsn?", &persistedValue );
 
                 if ( !IsValidPersistedState( persistedValue ) ) {
                     return return_code::error;
@@ -134,7 +134,7 @@ namespace legacy
                 return ( stateString.substr( 0, 2 ) == "MM" );
             }
 
-            LaserDevice* laserDevice_;
+            LaserDriver* laserDriver_;
         };
 
         class LaserCurrentProperty : public NumericProperty<double>
@@ -143,11 +143,11 @@ namespace legacy
 
         public:
 
-            LaserCurrentProperty( const std::string& name, LaserDevice* laserDevice, const std::string& getCommand,
+            LaserCurrentProperty( const std::string& name, LaserDriver* laserDriver, const std::string& getCommand,
                 const std::string& setCommandBase, const double min, const double max, Laser* laser ) :
-                NumericProperty<double>( name, laserDevice, getCommand, setCommandBase, min, max ),
+                NumericProperty<double>( name, laserDriver, getCommand, setCommandBase, min, max ),
                 laser_( laser ),
-                laserStatePersistence_( laserDevice )
+                laserStatePersistence_( laserDriver )
             {
                 // We don't want caching as the value retrieval is more complex here:
                 SetCaching( false );
@@ -179,10 +179,9 @@ namespace legacy
                 if ( laser_->IsShutterOpen() ) {
 
                     returnCode = Parent::SetValue( value );
+                    if ( returnCode != return_code::ok ) { return returnCode; }
 
-                    if ( returnCode == return_code::ok ) {
-                        returnCode = laserStatePersistence_.PersistCurrentSetpoint( value );
-                    }
+                    returnCode = laserStatePersistence_.PersistCurrentSetpoint( value );
 
                 } else if ( Parent::IsValidValue( value ) ) { // Shutter closed.
                     
@@ -204,10 +203,10 @@ namespace legacy
 
         public:
             
-            LaserRunModeProperty( const std::string& name, LaserDevice* laserDevice, const std::string& getCommand, Laser* laser ) :
-                EnumerationProperty( name, laserDevice, getCommand ),
+            LaserRunModeProperty( const std::string& name, LaserDriver* laserDriver, const std::string& getCommand, Laser* laser ) :
+                EnumerationProperty( name, laserDriver, getCommand ),
                 laser_( laser ),
-                laserStatePersistence_( laserDevice )
+                laserStatePersistence_( laserDriver )
             {
                 // We don't want caching as the value retrieval is more complex here:
                 SetCaching( false );
@@ -225,9 +224,14 @@ namespace legacy
             virtual int GetValue( std::string& string ) const
             {
                 if ( laser_->IsShutterOpen() ) {
+
                     return Parent::GetValue( string );
+
                 } else {
+
                     laserStatePersistence_.GetRunmode( string );
+                    string = ResolveEnumerationItem( string );
+
                     return return_code::ok;
                 }
             }
@@ -239,10 +243,9 @@ namespace legacy
                 if ( laser_->IsShutterOpen() ) {
 
                     returnCode = Parent::SetValue( value );
-
-                    if ( returnCode == return_code::ok ) {
-                        returnCode = laserStatePersistence_.PersistRunmode( value );
-                    }
+                    if ( returnCode != return_code::ok ) { return returnCode; }
+                    
+                    returnCode = laserStatePersistence_.PersistRunmode( value );
 
                 } else if ( Parent::IsValidValue( value ) ) { // Shutter closed.
 
@@ -265,7 +268,7 @@ namespace legacy
             static const std::string Value_Open;
             static const std::string Value_Closed;
 
-            LaserShutterProperty( const std::string& name, LaserDevice* laserDevice );
+            LaserShutterProperty( const std::string& name, LaserDriver* laserDriver, Laser* laser );
             
             virtual int IntroduceToGuiEnvironment( GuiEnvironment* environment );
 
@@ -277,6 +280,7 @@ namespace legacy
             int SaveState();
             int RestoreState();
 
+            Laser* laser_;
             bool isOpen_;
             PersistedLaserState laserStatePersistence_;
         };

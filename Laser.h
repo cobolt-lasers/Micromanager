@@ -19,7 +19,7 @@
 
 NAMESPACE_COBOLT_BEGIN
 
-class LaserDevice;
+class LaserDriver;
 class MutableDeviceProperty;
 
 class Laser
@@ -28,7 +28,7 @@ public:
 
     typedef std::map<std::string, cobolt::Property*>::iterator PropertyIterator;
 
-    static Laser* Create( LaserDevice* device );
+    static Laser* Create( LaserDriver* driver );
 
     virtual ~Laser();
 
@@ -59,7 +59,7 @@ private:
 
     static int NextId__;
 
-    Laser( const std::string& name, const std::string& wavelength, LaserDevice* device );
+    Laser( const std::string& name, const std::string& wavelength, LaserDriver* device );
 
     /// ###
     /// Overrideable Property Factories
@@ -92,12 +92,12 @@ private:
     static const std::string Amperes;
     static const std::string Milliwatts;
     static const std::string Watts;
-                 
+
     static const std::string EnumerationItem_On;
     static const std::string EnumerationItem_Off;
     static const std::string EnumerationItem_Enabled;
     static const std::string EnumerationItem_Disabled;
-                 
+
     static const std::string EnumerationItem_RunMode_ConstantCurrent;
     static const std::string EnumerationItem_RunMode_ConstantPower;
     static const std::string EnumerationItem_RunMode_Modulation;
@@ -115,7 +115,7 @@ private:
     std::string id_;
     std::string name_;
     std::string wavelength_;
-    LaserDevice* device_;
+    LaserDriver* laserDriver_;
 
     std::string currentUnit_;
     std::string powerUnit_;

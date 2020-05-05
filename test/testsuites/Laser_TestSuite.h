@@ -24,7 +24,7 @@ public:
     std::string value;
 };
 
-class Laser_TestSuite : public CxxTest::TestSuite, public LaserDevice
+class Laser_TestSuite : public CxxTest::TestSuite, public LaserDriver
 {
     struct PhysicalLaserMock
     {
@@ -58,7 +58,7 @@ public:
 
     void test_GetProperty_firmware()
     {
-        TS_ASSERT_EQUALS( _someLaser->GetProperty( "Firmware Version" )->Get<std::string>(), _physicalLaserMock.firmwareVersion );
+        TS_ASSERT_EQUALS( _someLaser->GetProperty( "Firmware Version" )->GetValue(), _physicalLaserMock.firmwareVersion );
     }
 
     void test_OnGuiSetAction_toggle_on()

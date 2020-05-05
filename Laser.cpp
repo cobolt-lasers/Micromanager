@@ -10,7 +10,7 @@
 #include "Laser.h"
 #include "Logger.h"
 
-#include "LaserDevice.h"
+#include "LaserDriver.h"
 #include "StaticStringProperty.h"
 #include "DeviceProperty.h"
 #include "MutableDeviceProperty.h"
@@ -38,12 +38,12 @@ const std::string Laser::EnumerationItem_RunMode_Modulation = "Modulation";
 
 int Laser::NextId__ = 1;
 
-Laser* Laser::Create( LaserDevice* device )
+Laser* Laser::Create( LaserDriver* driver )
 {
-    assert( device != NULL );
+    assert( driver != NULL );
     
     std::string modelString;
-    if ( device->SendCommand( "glm?", &modelString ) != return_code::ok ) {
+    if ( driver->SendCommand( "glm?", &modelString ) != return_code::ok ) {
         return NULL;
     }
     
@@ -59,7 +59,7 @@ Laser* Laser::Create( LaserDevice* device )
 
     if ( modelString.find( "-06-91-" ) != std::string::npos ) {
 
-        laser = new Laser( "06-DPL", wavelength, device );
+        laser = new Laser( "06-DPL", wavelength, driver );
 
         laser->currentUnit_ = Milliamperes; 
         laser->powerUnit_ = Milliwatts;
@@ -83,7 +83,7 @@ Laser* Laser::Create( LaserDevice* device )
     } else if ( modelString.find( "-06-01-" ) != std::string::npos ||
                 modelString.find( "-06-03-" ) != std::string::npos ) {
 
-        laser = new Laser( "06-MLD", wavelength, device );
+        laser = new Laser( "06-MLD", wavelength, driver );
 
         laser->currentUnit_ = Milliamperes;
         laser->powerUnit_ = Milliwatts;
@@ -108,7 +108,7 @@ Laser* Laser::Create( LaserDevice* device )
         
     } else if ( modelString.find( "-05-" ) != std::string::npos ) {
 
-        laser = new Laser( "Compact 05", wavelength, device );
+        laser = new Laser( "Compact 05", wavelength, driver );
 
         laser->currentUnit_ = Amperes;
         laser->powerUnit_ = Milliwatts;
@@ -129,10 +129,12 @@ Laser* Laser::Create( LaserDevice* device )
         
     } else {
 
-        laser = new Laser( "Unknown", wavelength, device );
+        laser = new Laser( "Unknown", wavelength, driver );
     }
     
     Logger::Instance()->LogMessage( "Created laser '" + laser->GetName() + "'", true );
+
+    laser->SetShutterOpen( false );
 
     Property::ResetIdGenerator();
 
@@ -171,12 +173,10 @@ const std::string& Laser::GetWavelength() const
 
 void Laser::SetOn( const bool on )
 {
+    // Reset shutter on laser on/off:
+    SetShutterOpen( false );
+
     laserOnOffProperty->SetValue( ( on ? EnumerationItem_On : EnumerationItem_Off ) );
-    
-    // Shutter closed by default (this is also assumed when setting up the shutter property):
-    if ( on ) {
-        SetShutterOpen( false );
-    }
 }
 
 void Laser::SetShutterOpen( const bool open )
@@ -238,11 +238,11 @@ void Laser::DecomposeModelString( std::string modelString, std::vector<std::stri
     }
 }
 
-Laser::Laser( const std::string& name, const std::string& wavelength, LaserDevice* device ) :
+Laser::Laser( const std::string& name, const std::string& wavelength, LaserDriver* driver ) :
     id_( std::to_string( (long double) NextId__++ ) ),
     name_( name ),
     wavelength_( wavelength ),
-    device_( device ),
+    laserDriver_( driver ),
     currentUnit_( "?" ),
     powerUnit_( "?" )
 {
@@ -255,7 +255,7 @@ void Laser::CreateNameProperty()
 
 void Laser::CreateModelProperty()
 {
-    RegisterPublicProperty( new DeviceProperty( Property::String, "Model", device_, "glm?") );
+    RegisterPublicProperty( new DeviceProperty( Property::String, "Model", laserDriver_, "glm?") );
 }
 
 void Laser::CreateWavelengthProperty()
@@ -265,23 +265,23 @@ void Laser::CreateWavelengthProperty()
 
 void Laser::CreateSerialNumberProperty()
 {
-    RegisterPublicProperty( new DeviceProperty( Property::String, "Serial Number", device_, "gsn?") );
+    RegisterPublicProperty( new DeviceProperty( Property::String, "Serial Number", laserDriver_, "gsn?") );
 }
 
 void Laser::CreateFirmwareVersionProperty()
 {
-    RegisterPublicProperty( new DeviceProperty( Property::String, "Firmware Version", device_, "gfv?") );
+    RegisterPublicProperty( new DeviceProperty( Property::String, "Firmware Version", laserDriver_, "gfv?") );
 }
 
 void Laser::CreateOperatingHoursProperty()
 {
-    RegisterPublicProperty( new DeviceProperty( Property::String, "Operating Hours", device_, "hrs?") );
+    RegisterPublicProperty( new DeviceProperty( Property::String, "Operating Hours", laserDriver_, "hrs?") );
 }
 
 void Laser::CreateCurrentSetpointProperty()
 {
     std::string maxCurrentSetpointResponse;
-    if ( device_->SendCommand( "gmlc?", &maxCurrentSetpointResponse ) != return_code::ok ) {
+    if ( laserDriver_->SendCommand( "gmlc?", &maxCurrentSetpointResponse ) != return_code::ok ) {
 
         Logger::Instance()->LogError( "Laser::CreateCurrentSetpointProperty(): Failed to retrieve max current sepoint" );
         return;
@@ -292,9 +292,9 @@ void Laser::CreateCurrentSetpointProperty()
     MutableDeviceProperty* property;
    
     if ( IsShutterCommandSupported() ) {
-        property = new NumericProperty<double>( "Current Setpoint [" + currentUnit_ + "]", device_, "glc?", "slc", 0.0f, maxCurrentSetpoint );
+        property = new NumericProperty<double>( "Current Setpoint [" + currentUnit_ + "]", laserDriver_, "glc?", "slc", 0.0f, maxCurrentSetpoint );
     } else {
-        property = new legacy::no_shutter_command::LaserCurrentProperty( "Current Setpoint [" + currentUnit_ + "]", device_, "glc?", "slc", 0.0f, maxCurrentSetpoint, this );
+        property = new legacy::no_shutter_command::LaserCurrentProperty( "Current Setpoint [" + currentUnit_ + "]", laserDriver_, "glc?", "slc", 0.0f, maxCurrentSetpoint, this );
     }
 
     RegisterPublicProperty( property );
@@ -302,7 +302,7 @@ void Laser::CreateCurrentSetpointProperty()
 
 void Laser::CreateCurrentReadingProperty()
 {
-    DeviceProperty* property = new DeviceProperty( Property::Float, "Measured Current [" + currentUnit_ + "]", device_, "i?" );
+    DeviceProperty* property = new DeviceProperty( Property::Float, "Measured Current [" + currentUnit_ + "]", laserDriver_, "i?" );
     property->SetCaching( false );
     RegisterPublicProperty( property );
 }
@@ -310,7 +310,7 @@ void Laser::CreateCurrentReadingProperty()
 void Laser::CreatePowerSetpointProperty()
 {
     std::string maxPowerSetpointResponse;
-    if ( device_->SendCommand( "gmlp?", &maxPowerSetpointResponse ) != return_code::ok ) {
+    if ( laserDriver_->SendCommand( "gmlp?", &maxPowerSetpointResponse ) != return_code::ok ) {
 
         Logger::Instance()->LogError( "Laser::CreatePowerSetpointProperty(): Failed to retrieve max power sepoint" );
         return;
@@ -318,20 +318,20 @@ void Laser::CreatePowerSetpointProperty()
 
     const double maxPowerSetpoint = atof( maxPowerSetpointResponse.c_str() );
     
-    MutableDeviceProperty* property = new NumericProperty<double>( "Power Setpoint [" + powerUnit_ + "]", device_, "glp?", "slp", 0.0f, maxPowerSetpoint );
+    MutableDeviceProperty* property = new NumericProperty<double>( "Power Setpoint [" + powerUnit_ + "]", laserDriver_, "glp?", "slp", 0.0f, maxPowerSetpoint );
     RegisterPublicProperty( property );
 }
 
 void Laser::CreatePowerReadingProperty()
 {
-    DeviceProperty* property = new DeviceProperty( Property::String, "Power Reading [" + powerUnit_ + "]", device_, "pa?" );
+    DeviceProperty* property = new DeviceProperty( Property::String, "Power Reading [" + powerUnit_ + "]", laserDriver_, "pa?" );
     property->SetCaching( false );
     RegisterPublicProperty( property );
 }
 
 void Laser::CreateLaserOnOffProperty()
 {
-    EnumerationProperty* property = new EnumerationProperty( "Laser Status", device_, "l?" );
+    EnumerationProperty* property = new EnumerationProperty( "Laser Status", laserDriver_, "l?" );
 
     property->RegisterEnumerationItem( "0", "l0", EnumerationItem_Off );
     property->RegisterEnumerationItem( "1", "l1", EnumerationItem_On );
@@ -343,9 +343,9 @@ void Laser::CreateLaserOnOffProperty()
 void Laser::CreateShutterProperty()
 {
     if ( IsShutterCommandSupported() ) {
-        shutter_ = new LaserShutterProperty( "Emission Status", device_ );
+        shutter_ = new LaserShutterProperty( "Emission Status", laserDriver_, this );
     } else {
-        shutter_ = new legacy::no_shutter_command::LaserShutterProperty( "Emission Status", device_ );
+        shutter_ = new legacy::no_shutter_command::LaserShutterProperty( "Emission Status", laserDriver_, this );
     }
     
     RegisterPublicProperty( shutter_ );
@@ -353,7 +353,14 @@ void Laser::CreateShutterProperty()
 
 template <> void Laser::CreateRunModeProperty<Laser::ST_05_Series>()
 {
-    EnumerationProperty* property = new EnumerationProperty( "Run Mode", device_, "gam?" );
+    EnumerationProperty* property;
+    
+    if ( IsShutterCommandSupported() ) {
+        property = new EnumerationProperty( "Run Mode", laserDriver_, "gam?" );
+    } else {
+        property = new legacy::no_shutter_command::LaserRunModeProperty( "Run Mode", laserDriver_, "gam?", this );
+    }
+
     property->SetCaching( false );
 
     property->RegisterEnumerationItem( "0", "sam 0", EnumerationItem_RunMode_ConstantCurrent );
@@ -367,9 +374,9 @@ template <> void Laser::CreateRunModeProperty<Laser::ST_06_DPL>()
     EnumerationProperty* property;
     
     if ( IsShutterCommandSupported() ) {
-        property = new EnumerationProperty( "Run Mode", device_, "gam?" );
+        property = new EnumerationProperty( "Run Mode", laserDriver_, "gam?" );
     } else {
-        property = new legacy::no_shutter_command::LaserRunModeProperty( "Run Mode", device_, "gam?", this );
+        property = new legacy::no_shutter_command::LaserRunModeProperty( "Run Mode", laserDriver_, "gam?", this );
     }
     
     property->SetCaching( false );
@@ -383,7 +390,14 @@ template <> void Laser::CreateRunModeProperty<Laser::ST_06_DPL>()
 
 template <> void Laser::CreateRunModeProperty<Laser::ST_06_MLD>()
 {
-    EnumerationProperty* property = new EnumerationProperty( "Run Mode", device_, "gam?" );
+    EnumerationProperty* property;
+
+    if ( IsShutterCommandSupported() ) {
+        property = new EnumerationProperty( "Run Mode", laserDriver_, "gam?" );
+    } else {
+        property = new legacy::no_shutter_command::LaserRunModeProperty( "Run Mode", laserDriver_, "gam?", this );
+    }
+    
     property->SetCaching( false );
 
     property->RegisterEnumerationItem( "0", "sam 0", EnumerationItem_RunMode_ConstantCurrent );
@@ -395,7 +409,7 @@ template <> void Laser::CreateRunModeProperty<Laser::ST_06_MLD>()
 
 void Laser::CreateDigitalModulationProperty()
 {
-    EnumerationProperty* property = new EnumerationProperty( "Digital Modulation", device_, "gdmes?" );
+    EnumerationProperty* property = new EnumerationProperty( "Digital Modulation", laserDriver_, "gdmes?" );
     property->RegisterEnumerationItem( "0", "sdmes 0", EnumerationItem_Disabled );
     property->RegisterEnumerationItem( "1", "sdmes 1", EnumerationItem_Enabled );
     RegisterPublicProperty( property );
@@ -403,7 +417,7 @@ void Laser::CreateDigitalModulationProperty()
 
 void Laser::CreateAnalogModulationFlagProperty()
 {
-    EnumerationProperty* property = new EnumerationProperty( "Analog Modulation", device_,  "games?" );
+    EnumerationProperty* property = new EnumerationProperty( "Analog Modulation", laserDriver_,  "games?" );
     property->RegisterEnumerationItem( "0", "sames 0", EnumerationItem_Disabled );
     property->RegisterEnumerationItem( "1", "sames 1", EnumerationItem_Enabled );
     RegisterPublicProperty( property );
@@ -412,7 +426,7 @@ void Laser::CreateAnalogModulationFlagProperty()
 void Laser::CreateModulationPowerSetpointProperty()
 {
     std::string maxModulationPowerSetpointResponse;
-    if ( device_->SendCommand( "gmlp?", &maxModulationPowerSetpointResponse ) != return_code::ok ) {
+    if ( laserDriver_->SendCommand( "gmlp?", &maxModulationPowerSetpointResponse ) != return_code::ok ) {
 
         Logger::Instance()->LogError( "Laser::CreatePowerSetpointProperty(): Failed to retrieve max power sepoint" );
         return;
@@ -420,12 +434,12 @@ void Laser::CreateModulationPowerSetpointProperty()
     
     const double maxModulationPowerSetpoint = atof( maxModulationPowerSetpointResponse.c_str() );
     
-    RegisterPublicProperty( new NumericProperty<double>( "Modulation Power Setpoint", device_, "glmp?", "slmp", 0, maxModulationPowerSetpoint ) );
+    RegisterPublicProperty( new NumericProperty<double>( "Modulation Power Setpoint", laserDriver_, "glmp?", "slmp", 0, maxModulationPowerSetpoint ) );
 }
 
 void Laser::CreateAnalogImpedanceProperty()
 {
-    EnumerationProperty* property = new EnumerationProperty( "Analog Impedance", device_, "galis?" );
+    EnumerationProperty* property = new EnumerationProperty( "Analog Impedance", laserDriver_, "galis?" );
     
     property->RegisterEnumerationItem( "0", "salis 0", "1 kOhm" );
     property->RegisterEnumerationItem( "1", "salis 1", "50 Ohm" );
@@ -436,7 +450,7 @@ void Laser::CreateAnalogImpedanceProperty()
 bool Laser::IsShutterCommandSupported()
 {
     std::string response;
-    device_->SendCommand( "l0r", &response );
+    laserDriver_->SendCommand( "l0r", &response );
     
     return ( response.find( "OK" ) != std::string::npos );
 }

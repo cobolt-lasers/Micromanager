@@ -19,7 +19,7 @@ class MutableDeviceProperty : public DeviceProperty
 
 public:
 
-    MutableDeviceProperty( const Property::Stereotype stereotype, const std::string& name, LaserDevice* laserDevice, const std::string& getCommand );
+    MutableDeviceProperty( const Property::Stereotype stereotype, const std::string& name, LaserDriver* laserDriver, const std::string& getCommand );
 
     virtual int IntroduceToGuiEnvironment( GuiEnvironment* );
     virtual bool IsMutable() const;

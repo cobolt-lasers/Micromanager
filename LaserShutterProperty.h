@@ -13,6 +13,8 @@
 
 NAMESPACE_COBOLT_BEGIN
 
+class Laser;
+
 class LaserShutterProperty : public EnumerationProperty
 {
 public:
@@ -20,13 +22,14 @@ public:
     static const std::string Value_Open;
     static const std::string Value_Closed;
 
-    LaserShutterProperty( const std::string& name, LaserDevice* laserDevice );
+    LaserShutterProperty( const std::string& name, LaserDriver* laserDriver, Laser* laser );
     
     virtual int GetValue( std::string& string ) const;
     virtual int SetValue( const std::string& );
 
 private:
 
+    Laser* laser_;
     bool isOpen_;
 };
 

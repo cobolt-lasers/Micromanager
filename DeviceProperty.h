@@ -13,13 +13,13 @@
 
 NAMESPACE_COBOLT_BEGIN
 
-class LaserDevice;
+class LaserDriver;
 
 class DeviceProperty : public Property
 {
 public:
 
-    DeviceProperty( Property::Stereotype stereotype, const std::string& name, LaserDevice* laserDevice, const std::string& getCommand );
+    DeviceProperty( Property::Stereotype stereotype, const std::string& name, LaserDriver* laserDriver, const std::string& getCommand );
 
     /**
      * \brief If caching is on, then the value will remain the same until it is
@@ -38,7 +38,7 @@ protected:
     void ClearCache() const;
     const std::string& GetCachedValue() const;
 
-    LaserDevice* laserDevice_;
+    LaserDriver* laserDriver_;
 
 private:
 

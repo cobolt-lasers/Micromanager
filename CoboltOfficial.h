@@ -15,11 +15,11 @@
 #include <string>
 #include "Laser.h"
 #include "Logger.h"
-#include "LaserDevice.h"
+#include "LaserDriver.h"
 
 class CoboltOfficial : 
     public CShutterBase<CoboltOfficial>, 
-    public cobolt::LaserDevice, 
+    public cobolt::LaserDriver, 
     public cobolt::Logger::Gateway, 
     public cobolt::GuiEnvironment
 {
@@ -49,7 +49,7 @@ public:
     int Fire( double duration );
 
     /// ###
-    /// LaserDevice API
+    /// LaserDriver API
 
     virtual int SendCommand( const std::string& command, std::string* response = NULL );
 

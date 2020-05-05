@@ -18,8 +18,8 @@ class NumericProperty : public MutableDeviceProperty
 {
 public:
 
-    NumericProperty( const std::string& name, LaserDevice* laserDevice, const std::string& getCommand, const std::string& setCommandBase, const T min, const T max ) :
-        MutableDeviceProperty( ResolveStereotype<T>(), name, laserDevice, getCommand ),
+    NumericProperty( const std::string& name, LaserDriver* laserDriver, const std::string& getCommand, const std::string& setCommandBase, const T min, const T max ) :
+        MutableDeviceProperty( ResolveStereotype<T>(), name, laserDriver, getCommand ),
         setCommandBase_( setCommandBase ),
         min_( min ),
         max_( max )
@@ -38,7 +38,7 @@ public:
             return return_code::invalid_value;
         }
 
-        return laserDevice_->SendCommand( setCommandBase_ + " " + value );
+        return laserDriver_->SendCommand( setCommandBase_ + " " + value );
     }
     
 protected:

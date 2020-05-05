@@ -11,9 +11,9 @@
 
 NAMESPACE_COBOLT_BEGIN
 
-DeviceProperty::DeviceProperty( Property::Stereotype stereotype, const std::string& name, LaserDevice* laserDevice, const std::string& getCommand ) :
+DeviceProperty::DeviceProperty( Property::Stereotype stereotype, const std::string& name, LaserDriver* laserDriver, const std::string& getCommand ) :
     Property( stereotype, name ),
-    laserDevice_( laserDevice ),
+    laserDriver_( laserDriver ),
     getCommand_( getCommand ),
     doCache_( true )
 {}
@@ -35,7 +35,7 @@ int DeviceProperty::GetValue( std::string& string ) const
     if ( doCache_ ) {
 
         if ( cachedValue_.length() == 0 ) {
-            returnCode = laserDevice_->SendCommand( getCommand_, &cachedValue_ );
+            returnCode = laserDriver_->SendCommand( getCommand_, &cachedValue_ );
         }
 
         if ( returnCode == return_code::ok ) {
@@ -46,7 +46,7 @@ int DeviceProperty::GetValue( std::string& string ) const
 
     } else {
 
-        returnCode = laserDevice_->SendCommand( getCommand_, &string );
+        returnCode = laserDriver_->SendCommand( getCommand_, &string );
     }
 
     if ( returnCode != return_code::ok ) {

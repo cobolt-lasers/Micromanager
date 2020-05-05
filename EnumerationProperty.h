@@ -22,7 +22,7 @@ class EnumerationProperty : public MutableDeviceProperty
 
 public:
     
-    EnumerationProperty( const std::string& name, LaserDevice* laserDevice, const std::string& getCommand );
+    EnumerationProperty( const std::string& name, LaserDriver* laserDriver, const std::string& getCommand );
 
     virtual int IntroduceToGuiEnvironment( GuiEnvironment* environment );
 
@@ -39,6 +39,7 @@ public:
 protected:
 
     bool IsValidValue( const std::string& guiValue );
+    std::string ResolveEnumerationItem( const std::string& deviceValue ) const;
 
 private:
 

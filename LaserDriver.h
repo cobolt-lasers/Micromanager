@@ -1,19 +1,19 @@
 /**
- * \file        LaserDevice.h
+ * \file        LaserDriver.h
  *
  * \authors     Lukas Kalinski
  *
  * \copyright   Cobolt AB, 2020. All rights reserved. // TODO: Set proper license
  */
 
-#ifndef __COBOLT__LASER_DEVICE_H
-#define __COBOLT__LASER_DEVICE_H
+#ifndef __COBOLT__LASER_DRIVER_H
+#define __COBOLT__LASER_DRIVER_H
 
 #include <string>
 
 namespace cobolt
 {
-    class LaserDevice
+    class LaserDriver
     {
     public:
 
@@ -24,4 +24,4 @@ namespace cobolt
     };
 }
 
-#endif // #ifndef __COBOLT__LASER_DEVICE_H
+#endif // #ifndef __COBOLT__LASER_DRIVER_H
