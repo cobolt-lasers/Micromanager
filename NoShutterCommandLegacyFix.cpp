@@ -59,7 +59,7 @@ int LaserShutterProperty::GetValue( std::string& string ) const
 
 int LaserShutterProperty::SetValue( const std::string& value )
 {
-    if ( !laser_->IsOn() && value == Value_Open ) { // The Laser object will call with value == closed, and we have to allow that even if IsOn() is false.
+    if ( !laser_->IsShutterEnabled() && value == Value_Open ) { // The Laser object will call with value == closed, and we have to allow that even if IsShutterEnabled() is false.
         return return_code::property_not_settable_in_current_state;
     }
     
@@ -125,12 +125,23 @@ int LaserShutterProperty::RestoreState()
     returnCode = laserStatePersistence_.GetCurrentSetpoint( currentSetpoint );
     if ( returnCode != return_code::ok ) { return returnCode; }
 
-    std::string setRunmodeCommand, setCurrentSetpointCommand;
+    std::string enterRunmodeCommand, setCurrentSetpointCommand;
 
-    setRunmodeCommand = "sam " + runmode;
+    if ( runmode == "0" ) {
+        enterRunmodeCommand = "ecc";
+    } else if ( runmode == "1" ) {
+        enterRunmodeCommand = "ecp";
+    } else if ( runmode == "2" ) {
+        enterRunmodeCommand = "em";
+    } else {
+
+        Logger::Instance()->LogError( "LaserShutterProperty[" + GetName() + "]::SaveState(): Unhandled runmode" );
+        return return_code::error;
+    }
+
     setCurrentSetpointCommand = "slc " + currentSetpoint;
-
-    returnCode = laserDriver_->SendCommand( setRunmodeCommand );
+    
+    returnCode = laserDriver_->SendCommand( enterRunmodeCommand ); // TODO NOW: just replaced old 'sam' command with the enterRunmodeCommand, now: Test this
     if ( returnCode != return_code::ok ) { return returnCode; }
 
     returnCode = laserDriver_->SendCommand( setCurrentSetpointCommand );

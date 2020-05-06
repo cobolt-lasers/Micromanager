@@ -36,7 +36,7 @@ int LaserShutterProperty::GetValue( std::string& string ) const
 
 int LaserShutterProperty::SetValue( const std::string& value )
 {
-    if ( !laser_->IsOn() ) {
+    if ( !laser_->IsShutterEnabled() ) {
         return return_code::property_not_settable_in_current_state;
     }
 

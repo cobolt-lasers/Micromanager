@@ -45,6 +45,9 @@
     <ClCompile Include="NoShutterCommandLegacyFix.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="LaserStateProperty.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CoboltOfficial.h">
@@ -84,6 +87,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="LaserDriver.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="LaserStateProperty.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

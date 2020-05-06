@@ -20,6 +20,7 @@
 NAMESPACE_COBOLT_BEGIN
 
 class LaserDriver;
+class LaserStateProperty;
 class MutableDeviceProperty;
 
 class Laser
@@ -39,7 +40,8 @@ public:
     void SetOn( const bool );
     void SetShutterOpen( const bool );
 
-    bool IsOn() const;
+    bool IsShutterEnabled() const;
+    
     bool IsShutterOpen() const;
 
     Property* GetProperty( const std::string& name ) const;
@@ -61,8 +63,11 @@ private:
 
     Laser( const std::string& name, const std::string& wavelength, LaserDriver* device );
 
+    void RegisterState( const std::string& state );
+
+
     /// ###
-    /// Overrideable Property Factories
+    /// Property Factories
 
     void CreateNameProperty();
     void CreateModelProperty();
@@ -75,6 +80,11 @@ private:
     void CreateCurrentReadingProperty();
     void CreatePowerSetpointProperty();
     void CreatePowerReadingProperty();
+
+    template<Stereotype T> void CreateLaserStateProperty();
+    template<> void CreateLaserStateProperty<ST_05_Series>();
+    template<> void CreateLaserStateProperty<ST_06_DPL>();
+    template<> void CreateLaserStateProperty<ST_06_MLD>();
 
     void CreateLaserOnOffProperty();
     void CreateShutterProperty();
@@ -120,7 +130,8 @@ private:
     std::string currentUnit_;
     std::string powerUnit_;
 
-    MutableDeviceProperty* laserOnOffProperty;
+    LaserStateProperty* laserStateProperty_;
+    MutableDeviceProperty* laserOnOffProperty_;
     MutableDeviceProperty* shutter_;
 };
 

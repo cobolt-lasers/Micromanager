@@ -85,6 +85,7 @@ CoboltOfficial::CoboltOfficial() :
     SetErrorText( cobolt::return_code::invalid_value,                           "Invalid value"                  );
     SetErrorText( cobolt::return_code::serial_port_undefined,                   "No valid serial port selected." );
     SetErrorText( cobolt::return_code::property_not_settable_in_current_state,  "Change of this property not allowed in current state." );
+    SetErrorText( cobolt::return_code::unsupported_device_property_value,       "Unsupported device response." );
     
     // Create non-laser properties:
     CreateProperty( MM::g_Keyword_Name,         g_DeviceName,               MM::String, true );
@@ -160,7 +161,7 @@ void CoboltOfficial::GetName( char* name ) const
 
 int CoboltOfficial::SetOpen( bool open )
 {
-    if ( !laser_->IsOn() ) {
+    if ( !laser_->IsShutterEnabled() ) {
         return cobolt::return_code::laser_off;
     }
     
@@ -174,7 +175,7 @@ int CoboltOfficial::SetOpen( bool open )
  */
 int CoboltOfficial::GetOpen( bool& open )
 {
-    open = ( laser_->IsOn() && !laser_->IsShutterOpen() );
+    open = ( laser_->IsShutterEnabled() && laser_->IsShutterOpen() );
 
     return cobolt::return_code::ok;
 }

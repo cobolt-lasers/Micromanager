@@ -29,6 +29,7 @@ namespace return_code
     const int laser_off = 101003;
     const int invalid_value = 101004;
     const int property_not_settable_in_current_state = 101005;
+    const int unsupported_device_property_value = 101006;
 }
 
 NAMESPACE_COBOLT_END

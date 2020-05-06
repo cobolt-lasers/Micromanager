@@ -13,6 +13,7 @@
 #include "LaserDriver.h"
 #include "StaticStringProperty.h"
 #include "DeviceProperty.h"
+#include "LaserStateProperty.h"
 #include "MutableDeviceProperty.h"
 #include "EnumerationProperty.h"
 #include "NumericProperty.h"
@@ -68,6 +69,7 @@ Laser* Laser::Create( LaserDriver* driver )
         laser->CreateModelProperty();
         laser->CreateFirmwareVersionProperty();
         laser->CreateWavelengthProperty();
+        laser->CreateLaserStateProperty<ST_06_DPL>();
         laser->CreateLaserOnOffProperty();
         laser->CreateShutterProperty();
         laser->CreateRunModeProperty<ST_06_DPL>();
@@ -92,6 +94,7 @@ Laser* Laser::Create( LaserDriver* driver )
         laser->CreateModelProperty();
         laser->CreateFirmwareVersionProperty();
         laser->CreateWavelengthProperty();
+        laser->CreateLaserStateProperty<ST_06_MLD>();
         laser->CreateLaserOnOffProperty();
         laser->CreateShutterProperty();
         laser->CreateRunModeProperty<ST_06_MLD>();
@@ -117,6 +120,7 @@ Laser* Laser::Create( LaserDriver* driver )
         laser->CreateModelProperty();
         laser->CreateFirmwareVersionProperty();
         laser->CreateWavelengthProperty();
+        laser->CreateLaserStateProperty<ST_05_Series>();
         laser->CreateLaserOnOffProperty();
         laser->CreateShutterProperty();
         laser->CreateRunModeProperty<ST_05_Series>();
@@ -126,7 +130,7 @@ Laser* Laser::Create( LaserDriver* driver )
         laser->CreateCurrentReadingProperty();
         laser->CreateOperatingHoursProperty();
         laser->CreateSerialNumberProperty();
-        
+
     } else {
 
         laser = new Laser( "Unknown", wavelength, driver );
@@ -176,7 +180,18 @@ void Laser::SetOn( const bool on )
     // Reset shutter on laser on/off:
     SetShutterOpen( false );
 
-    laserOnOffProperty->SetValue( ( on ? EnumerationItem_On : EnumerationItem_Off ) );
+    if ( laserOnOffProperty_ != NULL && false ) { // TODO: replace 'false' with 'autostart disabled'
+        
+        laserOnOffProperty_->SetValue( ( on ? EnumerationItem_On : EnumerationItem_Off ) );
+
+    } else {
+        
+        if ( on ) {
+            laserDriver_->SendCommand( "restart" );
+        } else {
+            laserDriver_->SendCommand( "abort" );
+        }
+    }
 }
 
 void Laser::SetShutterOpen( const bool open )
@@ -184,9 +199,19 @@ void Laser::SetShutterOpen( const bool open )
     shutter_->SetValue( open ? LaserShutterProperty::Value_Open : LaserShutterProperty::Value_Closed );
 }
 
-bool Laser::IsOn() const
+bool Laser::IsShutterEnabled() const
 {
-    return ( laserOnOffProperty->GetValue() ==  EnumerationItem_On );
+    if ( laserOnOffProperty_ != NULL ) {
+
+        return ( laserOnOffProperty_->GetValue() == EnumerationItem_On ); // TODO: && not in modulation state
+
+    } else if ( laserStateProperty_ != NULL ) {
+        
+        return ( laserStateProperty_->AllowsShutter() );
+    }
+    
+    Logger::Instance()->LogError( "Laser::IsShutterEnabled(): Expected properties were not initialized" );
+    return false;
 }
 
 bool Laser::IsShutterOpen() const
@@ -244,7 +269,9 @@ Laser::Laser( const std::string& name, const std::string& wavelength, LaserDrive
     wavelength_( wavelength ),
     laserDriver_( driver ),
     currentUnit_( "?" ),
-    powerUnit_( "?" )
+    powerUnit_( "?" ),
+    laserOnOffProperty_( NULL ),
+    shutter_( NULL )
 {
 }
 
@@ -329,6 +356,38 @@ void Laser::CreatePowerReadingProperty()
     RegisterPublicProperty( property );
 }
 
+template<> void Laser::CreateLaserStateProperty<Laser::ST_05_Series>()
+{
+    Logger::Instance()->LogError( "05 Series support not fully implemented" );
+    assert( false ); // TODO: Implement
+}
+
+template<> void Laser::CreateLaserStateProperty<Laser::ST_06_DPL>()
+{
+    laserStateProperty_ = new LaserStateProperty( Property::String, "Laser State", laserDriver_, "gom?" );
+
+    laserStateProperty_->RegisterState( "0", "Off",                     false );
+    laserStateProperty_->RegisterState( "1", "Waiting for Key",         false );
+    laserStateProperty_->RegisterState( "2", "Warming Up",              false );
+    laserStateProperty_->RegisterState( "3", "Enabled",                 true );
+    laserStateProperty_->RegisterState( "4", "Fault",                   false );
+    laserStateProperty_->RegisterState( "5", "Aborted",                 false );
+    laserStateProperty_->RegisterState( "6", "Enabled (Modulation)",    false );
+}
+
+template<> void Laser::CreateLaserStateProperty<Laser::ST_06_MLD>()
+{
+    laserStateProperty_ = new LaserStateProperty( Property::String, "Laser State", laserDriver_, "gom?" );
+    
+    laserStateProperty_->RegisterState( "0", "Off", false );
+    laserStateProperty_->RegisterState( "1", "Waiting for Key", false );
+    laserStateProperty_->RegisterState( "2", "Enabled", true );
+    laserStateProperty_->RegisterState( "3", "Enabled (On/Off Modulation)", false );
+    laserStateProperty_->RegisterState( "4", "Enabled (Modulation)", false );
+    laserStateProperty_->RegisterState( "5", "Fault", false );
+    laserStateProperty_->RegisterState( "6", "Aborted", false );
+}
+
 void Laser::CreateLaserOnOffProperty()
 {
     EnumerationProperty* property = new EnumerationProperty( "Laser Status", laserDriver_, "l?" );
@@ -337,7 +396,7 @@ void Laser::CreateLaserOnOffProperty()
     property->RegisterEnumerationItem( "1", "l1", EnumerationItem_On );
     
     RegisterPublicProperty( property );
-    laserOnOffProperty = property;
+    laserOnOffProperty_ = property;
 }
 
 void Laser::CreateShutterProperty()
@@ -363,8 +422,8 @@ template <> void Laser::CreateRunModeProperty<Laser::ST_05_Series>()
 
     property->SetCaching( false );
 
-    property->RegisterEnumerationItem( "0", "sam 0", EnumerationItem_RunMode_ConstantCurrent );
-    property->RegisterEnumerationItem( "1", "sam 1", EnumerationItem_RunMode_ConstantPower );
+    property->RegisterEnumerationItem( "0", "sam 0\r\nrestart", EnumerationItem_RunMode_ConstantCurrent );
+    property->RegisterEnumerationItem( "1", "sam 1\r\nrestart", EnumerationItem_RunMode_ConstantPower );
 
     RegisterPublicProperty( property );
 }
@@ -381,9 +440,9 @@ template <> void Laser::CreateRunModeProperty<Laser::ST_06_DPL>()
     
     property->SetCaching( false );
 
-    property->RegisterEnumerationItem( "0", "sam 0", EnumerationItem_RunMode_ConstantCurrent );
-    property->RegisterEnumerationItem( "1", "sam 1", EnumerationItem_RunMode_ConstantPower );
-    property->RegisterEnumerationItem( "2", "sam 2", EnumerationItem_RunMode_Modulation );
+    property->RegisterEnumerationItem( "0", "sam 0\r\nrestart", EnumerationItem_RunMode_ConstantCurrent );
+    property->RegisterEnumerationItem( "1", "sam 1\r\nrestart", EnumerationItem_RunMode_ConstantPower );
+    property->RegisterEnumerationItem( "2", "sam 2\r\nrestart", EnumerationItem_RunMode_Modulation );
     
     RegisterPublicProperty( property );
 }
@@ -400,9 +459,9 @@ template <> void Laser::CreateRunModeProperty<Laser::ST_06_MLD>()
     
     property->SetCaching( false );
 
-    property->RegisterEnumerationItem( "0", "sam 0", EnumerationItem_RunMode_ConstantCurrent );
-    property->RegisterEnumerationItem( "1", "sam 1", EnumerationItem_RunMode_ConstantPower );
-    property->RegisterEnumerationItem( "2", "sam 2", EnumerationItem_RunMode_Modulation );
+    property->RegisterEnumerationItem( "0", "sam 0\r\nrestart", EnumerationItem_RunMode_ConstantCurrent );
+    property->RegisterEnumerationItem( "1", "sam 1\r\nrestart", EnumerationItem_RunMode_ConstantPower );
+    property->RegisterEnumerationItem( "2", "sam 2\r\nrestart", EnumerationItem_RunMode_Modulation );
 
     RegisterPublicProperty( property );
 }

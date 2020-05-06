@@ -148,18 +148,11 @@ namespace legacy
                 NumericProperty<double>( name, laserDriver, getCommand, setCommandBase, min, max ),
                 laser_( laser ),
                 laserStatePersistence_( laserDriver )
-            {
-                // We don't want caching as the value retrieval is more complex here:
-                SetCaching( false );
-            }
+            {}
 
-            virtual void SetCaching( const bool enabled )
+            virtual bool IsCacheEnabled() const
             {
-                // Prevent enabling of caching:
-                Parent::SetCaching( false );
-                if ( enabled ) {
-                    Logger::Instance()->LogMessage( "LaserCurrentProperty::SetCaching(...): overriding request to enable caching - caching remains disabled", true );
-                }
+                return false;
             }
 
             virtual int GetValue( std::string& string ) const
@@ -236,20 +229,22 @@ namespace legacy
                 }
             }
 
-            virtual int SetValue( const std::string& value )
+            virtual int SetValue( const std::string& guiValue )
             {
                 int returnCode = return_code::ok;
 
+                std::string deviceValue = ResolveDeviceValue( guiValue );
+
                 if ( laser_->IsShutterOpen() ) {
 
-                    returnCode = Parent::SetValue( value );
+                    returnCode = Parent::SetValue( guiValue );
                     if ( returnCode != return_code::ok ) { return returnCode; }
                     
-                    returnCode = laserStatePersistence_.PersistRunmode( value );
+                    returnCode = laserStatePersistence_.PersistRunmode( deviceValue );
 
-                } else if ( Parent::IsValidValue( value ) ) { // Shutter closed.
+                } else if ( Parent::IsValidValue( guiValue ) ) { // Shutter closed.
 
-                    returnCode = laserStatePersistence_.PersistRunmode( value );
+                    returnCode = laserStatePersistence_.PersistRunmode( deviceValue );
                 }
 
                 return returnCode;

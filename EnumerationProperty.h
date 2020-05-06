@@ -39,6 +39,8 @@ public:
 protected:
 
     bool IsValidValue( const std::string& guiValue );
+
+    std::string ResolveDeviceValue( const std::string& guiValue ) const;
     std::string ResolveEnumerationItem( const std::string& deviceValue ) const;
 
 private:

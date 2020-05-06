@@ -32,7 +32,7 @@ int DeviceProperty::GetValue( std::string& string ) const
 {
     int returnCode = return_code::ok;
 
-    if ( doCache_ ) {
+    if ( IsCacheEnabled() ) {
 
         if ( cachedValue_.length() == 0 ) {
             returnCode = laserDriver_->SendCommand( getCommand_, &cachedValue_ );
@@ -54,6 +54,11 @@ int DeviceProperty::GetValue( std::string& string ) const
     }
 
     return returnCode;
+}
+
+bool DeviceProperty::IsCacheEnabled() const
+{
+    return doCache_;
 }
 
 void DeviceProperty::ClearCache() const

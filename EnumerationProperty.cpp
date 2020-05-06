@@ -78,20 +78,28 @@ int EnumerationProperty::SetValue( const std::string& enumerationItemName )
 
 bool EnumerationProperty::IsValidValue( const std::string& enumerationItemName )
 {
+    return ( ResolveDeviceValue( enumerationItemName ) != "" );
+}
+
+/**
+ * \brief Translates value in MM GUI to value on device. Returns empty string if resolving failed.
+ */
+std::string EnumerationProperty::ResolveDeviceValue( const std::string& guiValue ) const
+{
     for ( enumeration_items_t::const_iterator enumerationItem = enumerationItems_.begin();
         enumerationItem != enumerationItems_.end();
         enumerationItem++ ) {
 
-        if ( enumerationItemName == enumerationItem->name ) {
-            return true;
+        if ( guiValue == enumerationItem->name ) {
+            return enumerationItem->deviceValue;
         }
     }
 
-    return false; 
+    return "";
 }
 
 /**
- * \brief Translates between value on device and value in MM GUI. Returns empty string if resolving failed.
+ * \brief Translates value on device to value in MM GUI. Returns empty string if resolving failed.
  */
 std::string EnumerationProperty::ResolveEnumerationItem( const std::string& deviceValue ) const
 {
