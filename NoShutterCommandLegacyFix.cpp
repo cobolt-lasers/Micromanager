@@ -36,6 +36,12 @@ LaserShutterProperty::LaserShutterProperty( const std::string& name, LaserDriver
             }
         }
     }
+
+    // Save current state as is if no state was previously saved:
+    if ( !laserStatePersistence_.PersistedStateExists() ) {
+        
+        SaveState();
+    }
 }
 
 int LaserShutterProperty::IntroduceToGuiEnvironment( GuiEnvironment* environment )

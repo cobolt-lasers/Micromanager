@@ -288,15 +288,7 @@ int CoboltOfficial::OnPropertyAction_Laser( MM::PropertyBase* mm_property, MM::A
 
     } else if ( action == MM::AfterSet ) {
     
-        std::string oldValue, newValue;
-        property->GetValue( oldValue );
-        guiProperty.Get( newValue );
-
-        Logger::Instance()->LogMessage( "CoboltOfficial::OnPropertyAction_Laser( '" + mm_property->GetName() + "', AfterSet ): Property before update = { " + property->ObjectString() + " } with value = '" + oldValue + "'", true );
-
         returnCode = property->OnGuiSetAction( guiProperty );
-        
-        Logger::Instance()->LogMessage( "CoboltOfficial::OnPropertyAction_Laser( '" + mm_property->GetName() + "', AfterSet ): Property after update = { " + property->ObjectString() + " } with value = '" + newValue + "'", true );
     }
     
     return returnCode;

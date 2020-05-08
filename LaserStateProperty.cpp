@@ -17,7 +17,7 @@ LaserStateProperty::LaserStateProperty( Property::Stereotype stereotype, const s
 
 void LaserStateProperty::RegisterState( const std::string& deviceValue, const std::string& guiValue, const bool allowsShutter )
 {
-    stateMap_.insert( deviceValue, guiValue );
+    stateMap_[ deviceValue ] = guiValue;
 
     if ( allowsShutter ) {
         shutterAllowedStates_.insert( deviceValue );
@@ -38,10 +38,10 @@ int LaserStateProperty::GetValue( std::string& string ) const
 
 bool LaserStateProperty::AllowsShutter() const
 {
-    std::string state;
-    GetValue( state );
+    std::string deviceValue;
+    Parent::GetValue( deviceValue ); // Do not use local overload as it would translate deviceValue to guiValue.
 
-    return ( shutterAllowedStates_.find( state ) != shutterAllowedStates_.end() );
+    return ( shutterAllowedStates_.find( deviceValue ) != shutterAllowedStates_.end() );
 }
 
 bool LaserStateProperty::IsCacheEnabled() const

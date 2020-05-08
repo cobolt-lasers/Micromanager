@@ -70,7 +70,7 @@ Laser* Laser::Create( LaserDriver* driver )
         laser->CreateFirmwareVersionProperty();
         laser->CreateWavelengthProperty();
         laser->CreateLaserStateProperty<ST_06_DPL>();
-        laser->CreateLaserOnOffProperty();
+        //laser->CreateLaserOnOffProperty();
         laser->CreateShutterProperty();
         laser->CreateRunModeProperty<ST_06_DPL>();
         laser->CreatePowerSetpointProperty();
@@ -95,7 +95,7 @@ Laser* Laser::Create( LaserDriver* driver )
         laser->CreateFirmwareVersionProperty();
         laser->CreateWavelengthProperty();
         laser->CreateLaserStateProperty<ST_06_MLD>();
-        laser->CreateLaserOnOffProperty();
+        //laser->CreateLaserOnOffProperty();
         laser->CreateShutterProperty();
         laser->CreateRunModeProperty<ST_06_MLD>();
         laser->CreatePowerSetpointProperty();
@@ -121,7 +121,7 @@ Laser* Laser::Create( LaserDriver* driver )
         laser->CreateFirmwareVersionProperty();
         laser->CreateWavelengthProperty();
         laser->CreateLaserStateProperty<ST_05_Series>();
-        laser->CreateLaserOnOffProperty();
+        //laser->CreateLaserOnOffProperty();
         laser->CreateShutterProperty();
         laser->CreateRunModeProperty<ST_05_Series>();
         laser->CreatePowerSetpointProperty();
@@ -367,12 +367,15 @@ template<> void Laser::CreateLaserStateProperty<Laser::ST_06_DPL>()
     laserStateProperty_ = new LaserStateProperty( Property::String, "Laser State", laserDriver_, "gom?" );
 
     laserStateProperty_->RegisterState( "0", "Off",                     false );
-    laserStateProperty_->RegisterState( "1", "Waiting for Key",         false );
-    laserStateProperty_->RegisterState( "2", "Warming Up",              false );
-    laserStateProperty_->RegisterState( "3", "Enabled",                 true );
-    laserStateProperty_->RegisterState( "4", "Fault",                   false );
-    laserStateProperty_->RegisterState( "5", "Aborted",                 false );
-    laserStateProperty_->RegisterState( "6", "Enabled (Modulation)",    false );
+    laserStateProperty_->RegisterState( "1", "Waiting for TEC",         false );
+    laserStateProperty_->RegisterState( "2", "Waiting for Key",         false );
+    laserStateProperty_->RegisterState( "3", "Warming Up",              false );
+    laserStateProperty_->RegisterState( "4", "Completed",               true  );
+    laserStateProperty_->RegisterState( "5", "Fault",                   false );
+    laserStateProperty_->RegisterState( "6", "Aborted",                 false );
+    laserStateProperty_->RegisterState( "7", "Modulation",              false );
+
+    RegisterPublicProperty( laserStateProperty_ );
 }
 
 template<> void Laser::CreateLaserStateProperty<Laser::ST_06_MLD>()
@@ -381,19 +384,21 @@ template<> void Laser::CreateLaserStateProperty<Laser::ST_06_MLD>()
     
     laserStateProperty_->RegisterState( "0", "Off", false );
     laserStateProperty_->RegisterState( "1", "Waiting for Key", false );
-    laserStateProperty_->RegisterState( "2", "Enabled", true );
-    laserStateProperty_->RegisterState( "3", "Enabled (On/Off Modulation)", false );
-    laserStateProperty_->RegisterState( "4", "Enabled (Modulation)", false );
+    laserStateProperty_->RegisterState( "2", "Completed", true );
+    laserStateProperty_->RegisterState( "3", "Completed (On/Off Modulation)", false );
+    laserStateProperty_->RegisterState( "4", "Completed (Modulation)", false );
     laserStateProperty_->RegisterState( "5", "Fault", false );
     laserStateProperty_->RegisterState( "6", "Aborted", false );
+
+    RegisterPublicProperty( laserStateProperty_ );
 }
 
 void Laser::CreateLaserOnOffProperty()
 {
     EnumerationProperty* property = new EnumerationProperty( "Laser Status", laserDriver_, "l?" );
 
-    property->RegisterEnumerationItem( "0", "l0", EnumerationItem_Off );
-    property->RegisterEnumerationItem( "1", "l1", EnumerationItem_On );
+    property->RegisterEnumerationItem( "0", "abort", EnumerationItem_Off );
+    property->RegisterEnumerationItem( "1", "restart", EnumerationItem_On );
     
     RegisterPublicProperty( property );
     laserOnOffProperty_ = property;
