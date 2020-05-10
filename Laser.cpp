@@ -427,8 +427,8 @@ template <> void Laser::CreateRunModeProperty<Laser::ST_05_Series>()
 
     property->SetCaching( false );
 
-    property->RegisterEnumerationItem( "0", "sam 0\r\nrestart", EnumerationItem_RunMode_ConstantCurrent );
-    property->RegisterEnumerationItem( "1", "sam 1\r\nrestart", EnumerationItem_RunMode_ConstantPower );
+    property->RegisterEnumerationItem( "0", "ecc", EnumerationItem_RunMode_ConstantCurrent );
+    property->RegisterEnumerationItem( "1", "ecp", EnumerationItem_RunMode_ConstantPower );
 
     RegisterPublicProperty( property );
 }
@@ -445,9 +445,9 @@ template <> void Laser::CreateRunModeProperty<Laser::ST_06_DPL>()
     
     property->SetCaching( false );
 
-    property->RegisterEnumerationItem( "0", "sam 0\r\nrestart", EnumerationItem_RunMode_ConstantCurrent );
-    property->RegisterEnumerationItem( "1", "sam 1\r\nrestart", EnumerationItem_RunMode_ConstantPower );
-    property->RegisterEnumerationItem( "2", "sam 2\r\nrestart", EnumerationItem_RunMode_Modulation );
+    property->RegisterEnumerationItem( "0", "ecc", EnumerationItem_RunMode_ConstantCurrent );
+    property->RegisterEnumerationItem( "1", "ecp", EnumerationItem_RunMode_ConstantPower );
+    property->RegisterEnumerationItem( "2", "em", EnumerationItem_RunMode_Modulation );
     
     RegisterPublicProperty( property );
 }
@@ -464,9 +464,9 @@ template <> void Laser::CreateRunModeProperty<Laser::ST_06_MLD>()
     
     property->SetCaching( false );
 
-    property->RegisterEnumerationItem( "0", "sam 0\r\nrestart", EnumerationItem_RunMode_ConstantCurrent );
-    property->RegisterEnumerationItem( "1", "sam 1\r\nrestart", EnumerationItem_RunMode_ConstantPower );
-    property->RegisterEnumerationItem( "2", "sam 2\r\nrestart", EnumerationItem_RunMode_Modulation );
+    property->RegisterEnumerationItem( "0", "ecc", EnumerationItem_RunMode_ConstantCurrent );
+    property->RegisterEnumerationItem( "1", "ecp", EnumerationItem_RunMode_ConstantPower );
+    property->RegisterEnumerationItem( "2", "em", EnumerationItem_RunMode_Modulation );
 
     RegisterPublicProperty( property );
 }

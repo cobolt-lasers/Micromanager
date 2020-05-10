@@ -212,8 +212,7 @@ int CoboltOfficial::SendCommand( const std::string& command, std::string* respon
     if ( returnCode == cobolt::return_code::ok && response != NULL ) {
 
         returnCode = GetSerialAnswer( port_.c_str(), "\r\n", *response );
-        //CDeviceUtils::SleepMs( 1000 );
-
+        
         if ( returnCode != cobolt::return_code::ok ) {
 
             Logger::Instance()->LogMessage( "CoboltOfficial::SendCommand: GetSerialAnswer Failed: " + std::to_string( (_Longlong) returnCode ), true );
