@@ -36,10 +36,6 @@ namespace legacy
             
             int PersistRunmode( const std::string& runmode )
             {
-                if ( runmode.empty() ) {
-                    Logger::Instance()->LogMessage( "RUNMODE EMPTY", true );
-                }
-
                 std::string isShutterOpenStr, currentSetpoint;
                 Fetch( &isShutterOpenStr, NULL, &currentSetpoint );
 
@@ -55,11 +51,6 @@ namespace legacy
                 std::string isShutterOpenStr, runmode;
                 Fetch( &isShutterOpenStr, &runmode, NULL );
 
-                if ( runmode.empty() ) {
-                    Logger::Instance()->LogMessage( "RUNMODE EMPTY", true );
-                    Fetch( &isShutterOpenStr, &runmode, NULL );
-                }
-
                 char valueToSave[ 32 ];
                 sprintf( valueToSave, "MM[%s;%s;%s]", isShutterOpenStr.c_str(), runmode.c_str(), currentSetpoint.c_str() );
                 const std::string saveCommand = "sdsn " + std::string( valueToSave );
@@ -69,10 +60,6 @@ namespace legacy
 
             int PersistState( const bool isShutterOpen, const std::string& runmode, const std::string& currentSetpoint )
             {
-                if ( runmode.empty() ) {
-                    Logger::Instance()->LogMessage( "RUNMODE EMPTY", true );
-                }
-
                 char valueToSave[ 32 ];
                 sprintf( valueToSave, "MM[%s;%s;%s]", ( isShutterOpen ? "1" : "0" ), runmode.c_str(), currentSetpoint.c_str() );
                 const std::string saveCommand = "sdsn " + std::string( valueToSave );

@@ -79,12 +79,12 @@ int LaserShutterProperty::SetValue( const std::string& value )
             SaveState();
         }
 
-        returnCode = laserDriver_->SendCommand( "ecc" );
-        if ( returnCode != return_code::ok ) { return returnCode; }
-        
         returnCode = laserDriver_->SendCommand( "slc 0" );
         if ( returnCode != return_code::ok ) { return returnCode; }
 
+        returnCode = laserDriver_->SendCommand( "ecc" );
+        if ( returnCode != return_code::ok ) { return returnCode; }
+        
     } else if ( value == Value_Open ) { // Shutter 'open' requested.
         
         // Only if not already open:
@@ -147,7 +147,7 @@ int LaserShutterProperty::RestoreState()
 
     setCurrentSetpointCommand = "slc " + currentSetpoint;
     
-    returnCode = laserDriver_->SendCommand( enterRunmodeCommand ); // TODO NOW: just replaced old 'sam' command with the enterRunmodeCommand, now: Test this
+    returnCode = laserDriver_->SendCommand( enterRunmodeCommand );
     if ( returnCode != return_code::ok ) { return returnCode; }
 
     returnCode = laserDriver_->SendCommand( setCurrentSetpointCommand );
