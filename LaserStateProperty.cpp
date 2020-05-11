@@ -8,7 +8,6 @@
 
 #include "LaserStateProperty.h"
 
-
 NAMESPACE_COBOLT_BEGIN
 
 LaserStateProperty::LaserStateProperty( Property::Stereotype stereotype, const std::string& name, LaserDriver* laserDriver, const std::string& getCommand ) :

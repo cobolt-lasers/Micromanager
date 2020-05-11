@@ -72,6 +72,7 @@ private:
     void CreateNameProperty();
     void CreateModelProperty();
     void CreateWavelengthProperty();
+    void CreateKeyswitchProperty();
     void CreateSerialNumberProperty();
     void CreateFirmwareVersionProperty();
 

@@ -141,6 +141,7 @@
     <ClCompile Include="CoboltOfficial.cpp" />
     <ClCompile Include="DeviceProperty.cpp" />
     <ClCompile Include="EnumerationProperty.cpp" />
+    <ClCompile Include="ImmutableEnumerationProperty.cpp" />
     <ClCompile Include="Laser.cpp" />
     <ClCompile Include="LaserShutterProperty.cpp" />
     <ClCompile Include="LaserStateProperty.cpp" />
@@ -155,6 +156,7 @@
     <ClInclude Include="CoboltOfficial.h" />
     <ClInclude Include="DeviceProperty.h" />
     <ClInclude Include="EnumerationProperty.h" />
+    <ClInclude Include="ImmutableEnumerationProperty.h" />
     <ClInclude Include="Laser.h" />
     <ClInclude Include="LaserDriver.h" />
     <ClInclude Include="LaserShutterProperty.h" />

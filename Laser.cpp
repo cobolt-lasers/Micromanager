@@ -13,6 +13,7 @@
 #include "LaserDriver.h"
 #include "StaticStringProperty.h"
 #include "DeviceProperty.h"
+#include "ImmutableEnumerationProperty.h"
 #include "LaserStateProperty.h"
 #include "MutableDeviceProperty.h"
 #include "EnumerationProperty.h"
@@ -69,6 +70,7 @@ Laser* Laser::Create( LaserDriver* driver )
         laser->CreateModelProperty();
         laser->CreateFirmwareVersionProperty();
         laser->CreateWavelengthProperty();
+        laser->CreateKeyswitchProperty();
         laser->CreateLaserStateProperty<ST_06_DPL>();
         //laser->CreateLaserOnOffProperty();
         laser->CreateShutterProperty();
@@ -94,6 +96,7 @@ Laser* Laser::Create( LaserDriver* driver )
         laser->CreateModelProperty();
         laser->CreateFirmwareVersionProperty();
         laser->CreateWavelengthProperty();
+        laser->CreateKeyswitchProperty();
         laser->CreateLaserStateProperty<ST_06_MLD>();
         //laser->CreateLaserOnOffProperty();
         laser->CreateShutterProperty();
@@ -115,11 +118,12 @@ Laser* Laser::Create( LaserDriver* driver )
 
         laser->currentUnit_ = Amperes;
         laser->powerUnit_ = Milliwatts;
-
+        
         laser->CreateNameProperty();
         laser->CreateModelProperty();
         laser->CreateFirmwareVersionProperty();
         laser->CreateWavelengthProperty();
+        laser->CreateKeyswitchProperty();
         laser->CreateLaserStateProperty<ST_05_Series>();
         //laser->CreateLaserOnOffProperty();
         laser->CreateShutterProperty();
@@ -290,6 +294,16 @@ void Laser::CreateWavelengthProperty()
     RegisterPublicProperty( new StaticStringProperty( "Wavelength", this->GetWavelength()) );
 }
 
+void Laser::CreateKeyswitchProperty()
+{
+    ImmutableEnumerationProperty* property = new ImmutableEnumerationProperty( "Keyswitch", laserDriver_, "gkses?" );
+
+    property->RegisterEnumerationItem( "0", "Disabled" );
+    property->RegisterEnumerationItem( "1", "Enabled" );
+    
+    RegisterPublicProperty( property );
+}
+
 void Laser::CreateSerialNumberProperty()
 {
     RegisterPublicProperty( new DeviceProperty( Property::String, "Serial Number", laserDriver_, "gsn?") );
@@ -364,7 +378,7 @@ template<> void Laser::CreateLaserStateProperty<Laser::ST_05_Series>()
 
 template<> void Laser::CreateLaserStateProperty<Laser::ST_06_DPL>()
 {
-    laserStateProperty_ = new LaserStateProperty( Property::String, "Laser State", laserDriver_, "gom?" );
+    laserStateProperty_ = new LaserStateProperty( Property::String, "Laser Startup State", laserDriver_, "gom?" );
 
     laserStateProperty_->RegisterState( "0", "Off",                     false );
     laserStateProperty_->RegisterState( "1", "Waiting for TEC",         false );
@@ -380,7 +394,7 @@ template<> void Laser::CreateLaserStateProperty<Laser::ST_06_DPL>()
 
 template<> void Laser::CreateLaserStateProperty<Laser::ST_06_MLD>()
 {
-    laserStateProperty_ = new LaserStateProperty( Property::String, "Laser State", laserDriver_, "gom?" );
+    laserStateProperty_ = new LaserStateProperty( Property::String, "Laser Startup State", laserDriver_, "gom?" );
     
     laserStateProperty_->RegisterState( "0", "Off", false );
     laserStateProperty_->RegisterState( "1", "Waiting for Key", false );
