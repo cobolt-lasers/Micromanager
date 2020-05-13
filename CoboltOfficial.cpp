@@ -81,7 +81,7 @@ CoboltOfficial::CoboltOfficial() :
     
     // Map cobolt specific error codes to readable strings:
     SetErrorText( cobolt::return_code::illegal_port_change,                     "Port change not allowed."       );
-    SetErrorText( cobolt::return_code::laser_off,                               "Laser is off."                  );
+    SetErrorText( cobolt::return_code::laser_startup_incomplete,                "Laser not ready (check keyswitch)." );
     SetErrorText( cobolt::return_code::invalid_value,                           "Invalid value"                  );
     SetErrorText( cobolt::return_code::serial_port_undefined,                   "No valid serial port selected." );
     SetErrorText( cobolt::return_code::property_not_settable_in_current_state,  "Change of this property not allowed in current state." );
@@ -162,7 +162,7 @@ void CoboltOfficial::GetName( char* name ) const
 int CoboltOfficial::SetOpen( bool open )
 {
     if ( !laser_->IsShutterEnabled() ) {
-        return cobolt::return_code::laser_off;
+        return cobolt::return_code::laser_startup_incomplete;
     }
     
     laser_->SetShutterOpen( open );

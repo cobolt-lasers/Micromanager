@@ -256,14 +256,14 @@ namespace legacy
             PersistedLaserState laserStatePersistence_;
         };
 
-        class LaserShutterProperty : public MutableDeviceProperty
+        class LaserShutterPropertyCdrh : public MutableDeviceProperty
         {
         public:
 
             static const std::string Value_Open;
             static const std::string Value_Closed;
 
-            LaserShutterProperty( const std::string& name, LaserDriver* laserDriver, Laser* laser );
+            LaserShutterPropertyCdrh( const std::string& name, LaserDriver* laserDriver, Laser* laser );
             
             virtual int IntroduceToGuiEnvironment( GuiEnvironment* environment );
 
@@ -280,6 +280,36 @@ namespace legacy
             PersistedLaserState laserStatePersistence_;
         };
 
+        class LaserShutterPropertyOem : public EnumerationProperty
+        {
+            typedef EnumerationProperty Parent;
+
+        public:
+
+            static const std::string Value_Open;
+            static const std::string Value_Closed;
+
+            LaserShutterPropertyOem( const std::string& name, LaserDriver* laserDriver, Laser* laser ) :
+                EnumerationProperty( name, laserDriver, "l?" ),
+                laser_( laser )
+            {
+                RegisterEnumerationItem( "0", "l0", Value_Closed );
+                RegisterEnumerationItem( "1", "l1", Value_Open );
+            }
+
+            virtual int SetValue( const std::string& value )
+            {
+                if ( !laser_->IsShutterEnabled() && value == Value_Open ) { // The Laser object will call with value == closed, and we have to allow that even if IsShutterEnabled() is false.
+                    return return_code::property_not_settable_in_current_state;
+                }
+                
+                return Parent::SetValue( value );
+            }
+
+        private:
+
+            Laser* laser_;
+        };
     }
 }
 

@@ -75,6 +75,7 @@ private:
     void CreateKeyswitchProperty();
     void CreateSerialNumberProperty();
     void CreateFirmwareVersionProperty();
+    void CreateDriverVersionProperty();
 
     void CreateOperatingHoursProperty();
     void CreateCurrentSetpointProperty();
@@ -115,7 +116,8 @@ private:
 
     static void DecomposeModelString( std::string modelString, std::vector<std::string>& modelTokens );
 
-    bool IsShutterCommandSupported();
+    bool IsShutterCommandSupported() const;
+    bool IsInCdrhMode() const;
 
     void CreateGenericProperties();
 

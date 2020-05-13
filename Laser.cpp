@@ -83,6 +83,8 @@ Laser* Laser::Create( LaserDriver* driver )
         laser->CreateAnalogModulationFlagProperty();
         laser->CreateOperatingHoursProperty();
         laser->CreateSerialNumberProperty();
+        laser->CreateFirmwareVersionProperty();
+        laser->CreateDriverVersionProperty();
 
     } else if ( modelString.find( "-06-01-" ) != std::string::npos ||
                 modelString.find( "-06-03-" ) != std::string::npos ) {
@@ -111,6 +113,8 @@ Laser* Laser::Create( LaserDriver* driver )
         laser->CreateModulationPowerSetpointProperty();
         laser->CreateOperatingHoursProperty();
         laser->CreateSerialNumberProperty();
+        laser->CreateFirmwareVersionProperty();
+        laser->CreateDriverVersionProperty();
         
     } else if ( modelString.find( "-05-" ) != std::string::npos ) {
 
@@ -134,6 +138,8 @@ Laser* Laser::Create( LaserDriver* driver )
         laser->CreateCurrentReadingProperty();
         laser->CreateOperatingHoursProperty();
         laser->CreateSerialNumberProperty();
+        laser->CreateFirmwareVersionProperty();
+        laser->CreateDriverVersionProperty();
 
     } else {
 
@@ -314,6 +320,11 @@ void Laser::CreateFirmwareVersionProperty()
     RegisterPublicProperty( new DeviceProperty( Property::String, "Firmware Version", laserDriver_, "gfv?") );
 }
 
+void Laser::CreateDriverVersionProperty()
+{
+    RegisterPublicProperty( new StaticStringProperty( "Driver Version", COBOLT_MM_DRIVER_VERSION ) );
+}
+
 void Laser::CreateOperatingHoursProperty()
 {
     RegisterPublicProperty( new DeviceProperty( Property::String, "Operating Hours", laserDriver_, "hrs?") );
@@ -332,7 +343,7 @@ void Laser::CreateCurrentSetpointProperty()
 
     MutableDeviceProperty* property;
    
-    if ( IsShutterCommandSupported() ) {
+    if ( IsShutterCommandSupported() || !IsInCdrhMode() ) {
         property = new NumericProperty<double>( "Current Setpoint [" + currentUnit_ + "]", laserDriver_, "glc?", "slc", 0.0f, maxCurrentSetpoint );
     } else {
         property = new legacy::no_shutter_command::LaserCurrentProperty( "Current Setpoint [" + currentUnit_ + "]", laserDriver_, "glc?", "slc", 0.0f, maxCurrentSetpoint, this );
@@ -378,31 +389,51 @@ template<> void Laser::CreateLaserStateProperty<Laser::ST_05_Series>()
 
 template<> void Laser::CreateLaserStateProperty<Laser::ST_06_DPL>()
 {
-    laserStateProperty_ = new LaserStateProperty( Property::String, "Laser Startup State", laserDriver_, "gom?" );
+    if ( IsInCdrhMode() ) {
 
-    laserStateProperty_->RegisterState( "0", "Off",                     false );
-    laserStateProperty_->RegisterState( "1", "Waiting for TEC",         false );
-    laserStateProperty_->RegisterState( "2", "Waiting for Key",         false );
-    laserStateProperty_->RegisterState( "3", "Warming Up",              false );
-    laserStateProperty_->RegisterState( "4", "Completed",               true  );
-    laserStateProperty_->RegisterState( "5", "Fault",                   false );
-    laserStateProperty_->RegisterState( "6", "Aborted",                 false );
-    laserStateProperty_->RegisterState( "7", "Modulation",              false );
+        laserStateProperty_ = new LaserStateProperty( Property::String, "Laser State", laserDriver_, "gom?" );
+
+        laserStateProperty_->RegisterState( "0", "Off", false );
+        laserStateProperty_->RegisterState( "1", "Waiting for TEC", false );
+        laserStateProperty_->RegisterState( "2", "Waiting for Key", false );
+        laserStateProperty_->RegisterState( "3", "Warming Up", false );
+        laserStateProperty_->RegisterState( "4", "Completed", true );
+        laserStateProperty_->RegisterState( "5", "Fault", false );
+        laserStateProperty_->RegisterState( "6", "Aborted", false );
+        laserStateProperty_->RegisterState( "7", "Modulation", false );
+
+    } else {
+
+        laserStateProperty_ = new LaserStateProperty( Property::String, "Laser State", laserDriver_, "l?" );
+
+        laserStateProperty_->RegisterState( "0", "Off", true );
+        laserStateProperty_->RegisterState( "1", "On", true );
+    }
 
     RegisterPublicProperty( laserStateProperty_ );
 }
 
 template<> void Laser::CreateLaserStateProperty<Laser::ST_06_MLD>()
 {
-    laserStateProperty_ = new LaserStateProperty( Property::String, "Laser Startup State", laserDriver_, "gom?" );
+    if ( IsInCdrhMode() ) {
+
+        laserStateProperty_ = new LaserStateProperty( Property::String, "Laser State", laserDriver_, "gom?" );
     
-    laserStateProperty_->RegisterState( "0", "Off", false );
-    laserStateProperty_->RegisterState( "1", "Waiting for Key", false );
-    laserStateProperty_->RegisterState( "2", "Completed", true );
-    laserStateProperty_->RegisterState( "3", "Completed (On/Off Modulation)", false );
-    laserStateProperty_->RegisterState( "4", "Completed (Modulation)", false );
-    laserStateProperty_->RegisterState( "5", "Fault", false );
-    laserStateProperty_->RegisterState( "6", "Aborted", false );
+        laserStateProperty_->RegisterState( "0", "Off", false );
+        laserStateProperty_->RegisterState( "1", "Waiting for Key", false );
+        laserStateProperty_->RegisterState( "2", "Completed", true );
+        laserStateProperty_->RegisterState( "3", "Completed (On/Off Modulation)", false );
+        laserStateProperty_->RegisterState( "4", "Completed (Modulation)", false );
+        laserStateProperty_->RegisterState( "5", "Fault", false );
+        laserStateProperty_->RegisterState( "6", "Aborted", false );
+
+    } else {
+
+        laserStateProperty_ = new LaserStateProperty( Property::String, "Laser State", laserDriver_, "l?" );
+
+        laserStateProperty_->RegisterState( "0", "Off", true );
+        laserStateProperty_->RegisterState( "1", "On", true );
+    }
 
     RegisterPublicProperty( laserStateProperty_ );
 }
@@ -423,7 +454,12 @@ void Laser::CreateShutterProperty()
     if ( IsShutterCommandSupported() ) {
         shutter_ = new LaserShutterProperty( "Emission Status", laserDriver_, this );
     } else {
-        shutter_ = new legacy::no_shutter_command::LaserShutterProperty( "Emission Status", laserDriver_, this );
+
+        if ( IsInCdrhMode() ) {
+            shutter_ = new legacy::no_shutter_command::LaserShutterPropertyCdrh( "Emission Status", laserDriver_, this );
+        } else {
+            shutter_ = new legacy::no_shutter_command::LaserShutterPropertyOem( "Emission Status", laserDriver_, this );
+        }
     }
     
     RegisterPublicProperty( shutter_ );
@@ -433,7 +469,7 @@ template <> void Laser::CreateRunModeProperty<Laser::ST_05_Series>()
 {
     EnumerationProperty* property;
     
-    if ( IsShutterCommandSupported() ) {
+    if ( IsShutterCommandSupported() || !IsInCdrhMode() ) {
         property = new EnumerationProperty( "Run Mode", laserDriver_, "gam?" );
     } else {
         property = new legacy::no_shutter_command::LaserRunModeProperty( "Run Mode", laserDriver_, "gam?", this );
@@ -451,7 +487,7 @@ template <> void Laser::CreateRunModeProperty<Laser::ST_06_DPL>()
 {
     EnumerationProperty* property;
     
-    if ( IsShutterCommandSupported() ) {
+    if ( IsShutterCommandSupported() || !IsInCdrhMode() ) {
         property = new EnumerationProperty( "Run Mode", laserDriver_, "gam?" );
     } else {
         property = new legacy::no_shutter_command::LaserRunModeProperty( "Run Mode", laserDriver_, "gam?", this );
@@ -470,7 +506,7 @@ template <> void Laser::CreateRunModeProperty<Laser::ST_06_MLD>()
 {
     EnumerationProperty* property;
 
-    if ( IsShutterCommandSupported() ) {
+    if ( IsShutterCommandSupported() || !IsInCdrhMode() ) {
         property = new EnumerationProperty( "Run Mode", laserDriver_, "gam?" );
     } else {
         property = new legacy::no_shutter_command::LaserRunModeProperty( "Run Mode", laserDriver_, "gam?", this );
@@ -525,12 +561,20 @@ void Laser::CreateAnalogImpedanceProperty()
     RegisterPublicProperty( property );
 }
 
-bool Laser::IsShutterCommandSupported()
+bool Laser::IsShutterCommandSupported() const
 {
     std::string response;
     laserDriver_->SendCommand( "l0r", &response );
     
     return ( response.find( "OK" ) != std::string::npos );
+}
+
+bool Laser::IsInCdrhMode() const
+{
+    std::string response;
+    laserDriver_->SendCommand( "gas?", &response );
+
+    return ( response == "1" );
 }
 
 void Laser::RegisterPublicProperty( Property* property )

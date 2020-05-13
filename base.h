@@ -26,11 +26,13 @@ namespace return_code
     const int unsupported_command = 11;
     const int illegal_port_change = 101001;
     const int serial_port_undefined = 101002;
-    const int laser_off = 101003;
+    const int laser_startup_incomplete = 101003;
     const int invalid_value = 101004;
     const int property_not_settable_in_current_state = 101005;
     const int unsupported_device_property_value = 101006;
 }
+
+#define COBOLT_MM_DRIVER_VERSION "0.9.1b"
 
 NAMESPACE_COBOLT_END
 

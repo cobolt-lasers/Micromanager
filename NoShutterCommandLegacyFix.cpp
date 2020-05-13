@@ -12,10 +12,10 @@ NAMESPACE_COBOLT_BEGIN
 
 using namespace legacy::no_shutter_command;
 
-const std::string LaserShutterProperty::Value_Open = "open";
-const std::string LaserShutterProperty::Value_Closed = "closed";
+const std::string LaserShutterPropertyCdrh::Value_Open = "open";
+const std::string LaserShutterPropertyCdrh::Value_Closed = "closed";
 
-LaserShutterProperty::LaserShutterProperty( const std::string& name, LaserDriver* laserDriver, Laser* laser ) :
+LaserShutterPropertyCdrh::LaserShutterPropertyCdrh( const std::string& name, LaserDriver* laserDriver, Laser* laser ) :
     MutableDeviceProperty( Property::String, name, laserDriver, "N/A" ),
     laser_( laser ),
     isOpen_( false ),
@@ -31,7 +31,7 @@ LaserShutterProperty::LaserShutterProperty( const std::string& name, LaserDriver
         if ( wasShutterClosed ) {
 
             if ( RestoreState() != return_code::ok ) {
-                Logger::Instance()->LogError( "LaserShutterProperty::LaserShutterProperty(...): Initialization failed" );
+                Logger::Instance()->LogError( "LaserShutterPropertyCdrh::LaserShutterPropertyCdrh(...): Initialization failed" );
                 return;
             }
         }
@@ -44,7 +44,7 @@ LaserShutterProperty::LaserShutterProperty( const std::string& name, LaserDriver
     }
 }
 
-int LaserShutterProperty::IntroduceToGuiEnvironment( GuiEnvironment* environment )
+int LaserShutterPropertyCdrh::IntroduceToGuiEnvironment( GuiEnvironment* environment )
 {
     environment->RegisterAllowedGuiPropertyValue( GetName(), Value_Open.c_str() );
     environment->RegisterAllowedGuiPropertyValue( GetName(), Value_Closed.c_str() );
@@ -52,7 +52,7 @@ int LaserShutterProperty::IntroduceToGuiEnvironment( GuiEnvironment* environment
     return return_code::ok;
 }
 
-int LaserShutterProperty::GetValue( std::string& string ) const
+int LaserShutterPropertyCdrh::GetValue( std::string& string ) const
 {
     if ( isOpen_ ) {
         string = Value_Open;
@@ -63,7 +63,7 @@ int LaserShutterProperty::GetValue( std::string& string ) const
     return return_code::ok;
 }
 
-int LaserShutterProperty::SetValue( const std::string& value )
+int LaserShutterPropertyCdrh::SetValue( const std::string& value )
 {
     if ( !laser_->IsShutterEnabled() && value == Value_Open ) { // The Laser object will call with value == closed, and we have to allow that even if IsShutterEnabled() is false.
         return return_code::property_not_settable_in_current_state;
@@ -96,13 +96,13 @@ int LaserShutterProperty::SetValue( const std::string& value )
 
     } else {
 
-        Logger::Instance()->LogMessage( "LaserShutterProperty[" + GetName() + "]::SetValue( '" + value + "' ): Ignored request as requested state is already set", true );
+        Logger::Instance()->LogMessage( "LaserShutterPropertyCdrh[" + GetName() + "]::SetValue( '" + value + "' ): Ignored request as requested state is already set", true );
     }
 
     return returnCode;
 }
 
-int LaserShutterProperty::SaveState()
+int LaserShutterPropertyCdrh::SaveState()
 {
     int returnCode = return_code::ok;
 
@@ -119,7 +119,7 @@ int LaserShutterProperty::SaveState()
     return returnCode;
 }
 
-int LaserShutterProperty::RestoreState()
+int LaserShutterPropertyCdrh::RestoreState()
 {
     int returnCode = return_code::ok;
 
@@ -141,7 +141,7 @@ int LaserShutterProperty::RestoreState()
         enterRunmodeCommand = "em";
     } else {
 
-        Logger::Instance()->LogError( "LaserShutterProperty[" + GetName() + "]::SaveState(): Unhandled runmode" );
+        Logger::Instance()->LogError( "LaserShutterPropertyCdrh[" + GetName() + "]::SaveState(): Unhandled runmode" );
         return return_code::error;
     }
 
@@ -155,5 +155,8 @@ int LaserShutterProperty::RestoreState()
 
     return returnCode;
 }
+
+const std::string LaserShutterPropertyOem::Value_Open = "open";
+const std::string LaserShutterPropertyOem::Value_Closed = "closed";
 
 NAMESPACE_COBOLT_END
