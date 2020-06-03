@@ -142,9 +142,9 @@ int CoboltOfficial::Initialize()
     }
 
     // Make sure 'device mode' is selected:
-    SendCommand( "1" );
+    //SendCommand( "1" );
 
-    laser_ = Laser::Create( this );
+    laser_ = LaserFactory::Create( this );
 
     if ( laser_ == NULL ) {
         return cobolt::return_code::error;

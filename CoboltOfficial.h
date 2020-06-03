@@ -36,7 +36,7 @@
 
 #include "DeviceBase.h"
 #include <string>
-#include "Laser.h"
+#include "LaserFactory.h"
 #include "Logger.h"
 #include "LaserDriver.h"
 
