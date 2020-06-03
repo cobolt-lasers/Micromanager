@@ -344,7 +344,7 @@ namespace legacy
             static const std::string Value_Open;
             static const std::string Value_Closed;
 
-            LaserShutterPropertySkyra( const std::string& name, LaserDriver* laserDriver, Laser* laser ) :
+            LaserShutterPropertySkyra( const std::string& name, LaserDriver* laserDriver, SkyraLaser* laser ) :
                 EnumerationProperty( name, laserDriver, "l?" ),
                 laser_( laser )
             {
@@ -363,7 +363,7 @@ namespace legacy
 
         private:
 
-            Laser* laser_;
+            SkyraLaser* laser_;
         };
     }
 }
