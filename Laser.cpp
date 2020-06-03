@@ -340,7 +340,7 @@ void Laser::CreateAnalogImpedanceProperty()
     RegisterPublicProperty( property );
 }
 
-bool Laser::IsShutterCommandSupported() const
+bool Laser::IsShutterCommandSupported() const // TODO: Split into IsShutterCommandSupported() and IsPauseCommandSupported()
 {
     std::string response;
     laserDriver_->SendCommand( "l0r", &response );

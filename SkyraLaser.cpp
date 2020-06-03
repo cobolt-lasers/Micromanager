@@ -41,7 +41,7 @@
 #include "EnumerationProperty.h"
 #include "NumericProperty.h"
 //#include "LaserShutterProperty.h"
-//#include "NoShutterCommandLegacyFix.h"
+#include "NoShutterCommandLegacyFix.h"
 
 using namespace std;
 using namespace cobolt;
@@ -51,7 +51,7 @@ SkyraLaser::SkyraLaser( LaserDriver* driver ) :
 {
     currentUnit_ = Milliamperes;
     powerUnit_ = Milliwatts;
-    
+
     CreateNameProperty();
     CreateModelProperty();
     CreateSerialNumberProperty();
@@ -59,15 +59,20 @@ SkyraLaser::SkyraLaser( LaserDriver* driver ) :
     CreateAdapterVersionProperty();
     CreateOperatingHoursProperty();
 
-    //laser->CreateWavelengthProperty( wavelength );  // TODO: Per line property
     CreateKeyswitchProperty();
-    //laser->CreateLaserStateProperty<ST_Skyra>();
-    //laser->CreateShutterProperty();                 // TODO: Per line property
-    //laser->CreateRunModeProperty<ST_Skyra>();       // TODO: Per line property
-    //laser->CreatePowerSetpointProperty();           // TODO: Per line property
-    //laser->CreatePowerReadingProperty();            // TODO: Per line property
-    //laser->CreateCurrentSetpointProperty();         // TODO: Per line property
-    //laser->CreateCurrentReadingProperty();          // TODO: Per line property
+    CreateLaserStateProperty();
+    CreateShutterProperty();
+
+    const int linesCount = 4;
+    for ( int i = 0; i < linesCount; i++ ) {
+
+        //CreateWavelengthProperty( i, wavelength );  // TODO: Per line property
+        CreateRunModeProperty( i );
+        CreatePowerSetpointProperty( i );
+        CreatePowerReadingProperty( i );
+        CreateCurrentSetpointProperty( i );
+        CreateCurrentReadingProperty( i );
+    }
 }
 
 void SkyraLaser::CreateCurrentSetpointProperty( const int line )
@@ -127,22 +132,22 @@ void SkyraLaser::CreateLaserStateProperty()
 
         laserStateProperty_ = new LaserStateProperty( Property::String, "Laser State", laserDriver_, "gom?" );
 
-        laserStateProperty_->RegisterState( "0", "Off", false );
-        laserStateProperty_->RegisterState( "1", "Waiting for TEC", false );
-        laserStateProperty_->RegisterState( "2", "Waiting for Key", false );
-        laserStateProperty_->RegisterState( "3", "Warming Up", false );
-        laserStateProperty_->RegisterState( "4", "Completed", true );
-        laserStateProperty_->RegisterState( "5", "Fault", false );
-        laserStateProperty_->RegisterState( "6", "Aborted", false );
-        laserStateProperty_->RegisterState( "7", "Waiting for Remote", false );
-        laserStateProperty_->RegisterState( "8", "Standby", false );
+        laserStateProperty_->RegisterState( "0", "Off",                 false );
+        laserStateProperty_->RegisterState( "1", "Waiting for TEC",     false );
+        laserStateProperty_->RegisterState( "2", "Waiting for Key",     false );
+        laserStateProperty_->RegisterState( "3", "Warming Up",          false );
+        laserStateProperty_->RegisterState( "4", "Completed",           true );
+        laserStateProperty_->RegisterState( "5", "Fault",               false );
+        laserStateProperty_->RegisterState( "6", "Aborted",             false );
+        laserStateProperty_->RegisterState( "7", "Waiting for Remote",  false );
+        laserStateProperty_->RegisterState( "8", "Standby",             false );
 
     } else {
 
         laserStateProperty_ = new LaserStateProperty( Property::String, "Laser State", laserDriver_, "l?" );
 
-        laserStateProperty_->RegisterState( "0", "Off", true );
-        laserStateProperty_->RegisterState( "1", "On", true );
+        laserStateProperty_->RegisterState( "0", "Off",                 true );
+        laserStateProperty_->RegisterState( "1", "On",                  true );
     }
 
     RegisterPublicProperty( laserStateProperty_ );
@@ -150,18 +155,16 @@ void SkyraLaser::CreateLaserStateProperty()
 
 void SkyraLaser::CreateShutterProperty()
 {
-    //if ( IsShutterCommandSupported() ) {
-    //    shutter_ = new LaserShutterProperty( "Emission Status", laserDriver_, this );
-    //} else {
+    shutter_ = new legacy::no_shutter_command::LaserShutterPropertySkyra( "Emission Status", laserDriver_, this );
 
-    //    if ( IsInCdrhMode() ) {
-    //        shutter_ = new legacy::no_shutter_command::LaserShutterPropertyCdrh( "Emission Status", laserDriver_, this );
-    //    } else {
-    //        shutter_ = new legacy::no_shutter_command::LaserShutterPropertyOem( "Emission Status", laserDriver_, this );
-    //    }
-    //}
-    //
-    //RegisterPublicProperty( shutter_ );
+    if ( IsShutterCommandSupported() ) {
+        //shutter_ = new LaserShutterProperty( "Emission Status", laserDriver_, this ); // TODO: Fix once there is a shutter command on Skyra
+    } else {
+
+        //shutter_ = new legacy::no_shutter_command::LaserShutterPropertySkyra( "Emission Status", laserDriver_, this );
+    }
+
+    RegisterPublicProperty( shutter_ );
 }
 
 void SkyraLaser::CreateRunModeProperty( const int line )

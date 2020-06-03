@@ -334,6 +334,37 @@ namespace legacy
 
             Laser* laser_;
         };
+
+        class LaserShutterPropertySkyra : public EnumerationProperty
+        {
+            typedef EnumerationProperty Parent;
+
+        public:
+
+            static const std::string Value_Open;
+            static const std::string Value_Closed;
+
+            LaserShutterPropertySkyra( const std::string& name, LaserDriver* laserDriver, Laser* laser ) :
+                EnumerationProperty( name, laserDriver, "l?" ),
+                laser_( laser )
+            {
+                RegisterEnumerationItem( "0", "1sla 0\r2sla 0\r3sla 0\r4sla 0", Value_Closed );
+                RegisterEnumerationItem( "1", "1sla 1\r2sla 1\r3sla 1\r4sla 1", Value_Open );
+            }
+
+            virtual int SetValue( const std::string& value )
+            {
+                if ( !laser_->IsShutterEnabled() && value == Value_Open ) { // The Laser object will call with value == closed, and we have to allow that even if IsShutterEnabled() is false.
+                    return return_code::property_not_settable_in_current_state;
+                }
+
+                return Parent::SetValue( value );
+            }
+
+        private:
+
+            Laser* laser_;
+        };
     }
 }
 

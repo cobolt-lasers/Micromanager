@@ -183,4 +183,7 @@ int LaserShutterPropertyCdrh::RestoreState()
 const std::string LaserShutterPropertyOem::Value_Open = "open";
 const std::string LaserShutterPropertyOem::Value_Closed = "closed";
 
+const std::string LaserShutterPropertySkyra::Value_Open = "open";
+const std::string LaserShutterPropertySkyra::Value_Closed = "closed";
+
 NAMESPACE_COBOLT_END

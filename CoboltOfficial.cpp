@@ -230,6 +230,31 @@ int CoboltOfficial::SendCommand( const std::string& command, std::string* respon
 {
     Logger::Instance()->LogMessage( "CoboltOfficial::SendCommand: About to send command '" + command + "', response expected=" + ( response != NULL ? "yes" : "no" ), true );
 
+    // Split up into atomic commands if command is composite:
+    if ( command.find( '\r' ) != std::string::npos ) {
+
+        std::string atomicCommand;
+
+        for ( int i = 0; i < command.length(); i++ ) {
+
+            if ( command[ i ] == '\r' ) {
+
+                int returnCode = SendCommand( atomicCommand );
+
+                if ( returnCode != return_code::ok ) {
+                    return returnCode;
+                }
+
+                atomicCommand.clear();
+                continue;
+            }
+
+            atomicCommand.push_back( command[ i ] );
+        }
+
+        return return_code::ok;
+    }
+
     int returnCode = SendSerialCommand( port_.c_str(), command.c_str(), "\r" );
     
     if ( returnCode == cobolt::return_code::ok && response != NULL ) {
