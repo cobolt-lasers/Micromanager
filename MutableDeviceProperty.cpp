@@ -26,9 +26,13 @@
 //                HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 //                OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 //                SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-// AUTHORS:
-//                Lukas Kalinski / lukas.kalinski@coboltlasers.com (2020)
+//
+// CAUTION:       Use of controls or adjustments or performance of any procedures other than those
+//                specified in owner’s manual may result in exposure to hazardous radiation and
+//                violation of the CE / CDRH laser safety compliance.
+//
+// AUTHORS:       Lukas Kalinski / lukas.kalinski@coboltlasers.com (2020)
+//
 
 #include "MutableDeviceProperty.h"
 #include "Laser.h"
