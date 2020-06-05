@@ -335,36 +335,176 @@ namespace legacy
             Laser* laser_;
         };
 
-        class LaserShutterPropertySkyra : public EnumerationProperty
+        namespace skyra
         {
-            typedef EnumerationProperty Parent;
-
-        public:
-
-            static const std::string Value_Open;
-            static const std::string Value_Closed;
-
-            LaserShutterPropertySkyra( const std::string& name, LaserDriver* laserDriver, SkyraLaser* laser ) :
-                EnumerationProperty( name, laserDriver, "l?" ),
-                laser_( laser )
+            class LineActivationProperty : public EnumerationProperty
             {
-                RegisterEnumerationItem( "0", "1sla 0\r2sla 0\r3sla 0\r4sla 0", Value_Closed );
-                RegisterEnumerationItem( "1", "1sla 1\r2sla 1\r3sla 1\r4sla 1", Value_Open );
-            }
+                typedef EnumerationProperty Parent;
 
-            virtual int SetValue( const std::string& value )
-            {
-                if ( !laser_->IsShutterEnabled() && value == Value_Open ) { // The Laser object will call with value == closed, and we have to allow that even if IsShutterEnabled() is false.
-                    return return_code::property_not_settable_in_current_state;
+            public:
+
+                static const std::string Value_Active;
+                static const std::string Value_Inactive;
+
+                LineActivationProperty( const int line, const std::string& name, LaserDriver* laserDriver, Laser* laser ) :
+                    EnumerationProperty( name, laserDriver, std::to_string( (long long) line ) + "gla?" ),
+                    userValue_( "" ),
+                    laser_( laser )
+                {
+                    RegisterEnumerationItem( "0", std::to_string( (long long) line ) + "sla 0", Value_Inactive );
+                    RegisterEnumerationItem( "1", std::to_string( (long long) line ) + "sla 1", Value_Active );
                 }
 
-                return Parent::SetValue( value );
-            }
+                virtual int GetValue( std::string& string ) const
+                {
+                    if ( !userValue_.empty() ) {
+                        string = userValue_;
+                        return return_code::ok;
+                    }
 
-        private:
+                    return Parent::GetValue( string );
+                }
 
-            SkyraLaser* laser_;
-        };
+                virtual int SetValue( const std::string& guiValue )
+                {
+                    int returnCode = return_code::ok;
+
+                    if ( laser_->IsShutterOpen() ) {
+
+                        returnCode = Parent::SetValue( guiValue );
+
+                        if ( returnCode == return_code::ok ) {
+                            userValue_ = guiValue;
+                        }
+
+                    } else {
+
+                        userValue_ = guiValue;
+                    }
+                    
+                    return returnCode;
+                }
+
+                int MakeActiveIfUserRequestedIt()
+                {
+                    if ( userValue_ == Value_Active ) {
+                        return Parent::SetValue( Value_Active );
+                    }
+
+                    return return_code::ok;
+                }
+                
+                int MakeInactiveNotOverridingUserSetting()
+                {
+                    return Parent::SetValue( Value_Inactive );
+                }
+
+            private:
+
+                std::string userValue_;
+                Laser* laser_;
+            };
+
+            class LaserShutterProperty : public MutableDeviceProperty
+            {
+                typedef MutableDeviceProperty Parent;
+
+            public:
+
+                static const std::string Value_Open;
+                static const std::string Value_Closed;
+
+                LaserShutterProperty( const std::string& name, LaserDriver* laserDriver, Laser* laser ) :
+                    MutableDeviceProperty( Property::String, name, laserDriver, "N/A" ),
+                    laser_( laser )
+                {
+                }
+
+                void RegisterLineActivationProperty( LineActivationProperty* lineActivationProperty )
+                {
+                    lineActivationProperties_.push_back( lineActivationProperty );
+                }
+
+                virtual int IntroduceToGuiEnvironment( GuiEnvironment* guiEnvironment )
+                {
+                    guiEnvironment->RegisterAllowedGuiPropertyValue( GetName(), Value_Open );
+                    guiEnvironment->RegisterAllowedGuiPropertyValue( GetName(), Value_Closed );
+
+                    return return_code::ok;
+                }
+
+                virtual int GetValue( std::string& string ) const
+                {
+                    int returnCode = return_code::ok;
+                    std::string lineValue;
+
+                    std::vector<LineActivationProperty*>::const_iterator p = lineActivationProperties_.begin();
+                    while ( p != lineActivationProperties_.end() ) {
+                        
+                        returnCode = ( *p )->GetValue( lineValue );
+
+                        if ( returnCode != return_code::ok ) {
+                            return returnCode;
+                        }
+
+                        if ( lineValue == Value_Open ) {
+                            string = Value_Open;
+                            return returnCode;
+                        }
+
+                        p++;
+                    }
+
+                    string = Value_Closed;
+                    return returnCode;
+                }
+
+                virtual int SetValue( const std::string& value )
+                {
+                    if ( !laser_->IsShutterEnabled() && value == Value_Open ) { // The Laser object will always call once with value == closed, and we have to allow that even if IsShutterEnabled() is false.
+                        return return_code::property_not_settable_in_current_state;
+                    }
+
+                    int returnCode = return_code::ok;
+
+                    if ( value == Value_Open ) {
+
+                        std::vector<LineActivationProperty*>::iterator p = lineActivationProperties_.begin();
+                        while ( p != lineActivationProperties_.end() ) {
+                            
+                            returnCode = ( *p )->MakeActiveIfUserRequestedIt();
+
+                            if ( returnCode != return_code::ok ) {
+                                return returnCode;
+                            }
+
+                            p++;
+                        }
+
+                    } else {
+
+                        std::vector<LineActivationProperty*>::iterator p = lineActivationProperties_.begin();
+                        while ( p != lineActivationProperties_.end() ) {
+
+                            returnCode = ( *p )->MakeInactiveNotOverridingUserSetting();
+
+                            if ( returnCode != return_code::ok ) {
+                                return returnCode;
+                            }
+
+                            p++;
+                        }
+                    }
+
+                    return returnCode;
+                }
+
+            private:
+
+                Laser* laser_;
+                std::vector<LineActivationProperty*> lineActivationProperties_;
+            };
+        }
     }
 }
 

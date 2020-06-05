@@ -64,9 +64,10 @@ SkyraLaser::SkyraLaser( LaserDriver* driver ) :
     CreateShutterProperty();
 
     const int linesCount = 4;
-    for ( int i = 0; i < linesCount; i++ ) {
+    for ( int i = 1; i <= linesCount; i++ ) {
 
-        //CreateWavelengthProperty( i, wavelength );  // TODO: Per line property
+        CreateLineActivationProperty( i );
+        CreateWavelengthProperty( i );
         CreateRunModeProperty( i );
         CreatePowerSetpointProperty( i );
         CreatePowerReadingProperty( i );
@@ -75,31 +76,41 @@ SkyraLaser::SkyraLaser( LaserDriver* driver ) :
     }
 }
 
+void SkyraLaser::CreateLineActivationProperty( const int line )
+{
+    using namespace legacy::no_shutter_command::skyra;
+    
+    LineActivationProperty* lineActivationProperty = new LineActivationProperty( line, MakeLineName( line ), laserDriver_, this );
+    RegisterPublicProperty( lineActivationProperty );
+    ( ( LaserShutterProperty* )shutter_ )->RegisterLineActivationProperty( lineActivationProperty );
+}
+
+void SkyraLaser::CreateWavelengthProperty( const int line )
+{
+    RegisterPublicProperty( new DeviceProperty( Property::String, MakeLineName( line ) + " Wavelength", laserDriver_, MakeLineCommand( "glw?", line ) ) );
+}
+
 void SkyraLaser::CreateCurrentSetpointProperty( const int line )
 {
-    //std::string maxCurrentSetpointResponse;
-    //if ( laserDriver_->SendCommand( "gmlc?", &maxCurrentSetpointResponse ) != return_code::ok ) {
+    std::string maxCurrentSetpointResponse;
+    if ( laserDriver_->SendCommand( MakeLineCommand( "gmlc?", line ), &maxCurrentSetpointResponse ) != return_code::ok ) {
 
-    //    Logger::Instance()->LogError( "SkyraLaser::CreateCurrentSetpointProperty(): Failed to retrieve max current sepoint" );
-    //    return;
-    //}
+        Logger::Instance()->LogError( "SkyraLaser::CreateCurrentSetpointProperty(): Failed to retrieve max current sepoint" );
+        return;
+    }
 
-    //const double maxCurrentSetpoint = atof( maxCurrentSetpointResponse.c_str() );
+    const double maxCurrentSetpoint = atof( maxCurrentSetpointResponse.c_str() );
 
-    //MutableDeviceProperty* property;
-   
-    //if ( IsShutterCommandSupported() || !IsInCdrhMode() ) {
-    //    property = new NumericProperty<double>( "Current Setpoint [" + currentUnit_ + "]", laserDriver_, "glc?", "slc", 0.0f, maxCurrentSetpoint );
-    //} else {
-    //    property = new legacy::no_shutter_command::LaserCurrentProperty( "Current Setpoint [" + currentUnit_ + "]", laserDriver_, "glc?", "slc", 0.0f, maxCurrentSetpoint, this );
-    //}
-
-    //RegisterPublicProperty( property );
+    MutableDeviceProperty* property = new NumericProperty<double>( MakeLineName( line ) + " Current Setpoint [" + currentUnit_ + "]",
+        laserDriver_, MakeLineCommand( "glc?", line ), MakeLineCommand( "slc", line ), 0.0f, maxCurrentSetpoint );
+    
+    RegisterPublicProperty( property );
 }
 
 void SkyraLaser::CreateCurrentReadingProperty( const int line )
 {
-    DeviceProperty* property = new DeviceProperty( Property::Float, "Measured Current [" + currentUnit_ + "]", laserDriver_, "i?" );
+    DeviceProperty* property = new DeviceProperty( Property::Float, MakeLineName( line ) + " Measured Current [" + currentUnit_ + "]",
+        laserDriver_, MakeLineCommand( "i?", line ) );
     property->SetCaching( false );
     RegisterPublicProperty( property );
 }
@@ -107,7 +118,7 @@ void SkyraLaser::CreateCurrentReadingProperty( const int line )
 void SkyraLaser::CreatePowerSetpointProperty( const int line )
 {
     std::string maxPowerSetpointResponse;
-    if ( laserDriver_->SendCommand( "gmlp?", &maxPowerSetpointResponse ) != return_code::ok ) {
+    if ( laserDriver_->SendCommand( MakeLineCommand( "gmlp?", line ), &maxPowerSetpointResponse ) != return_code::ok ) {
 
         Logger::Instance()->LogError( "SkyraLaser::CreatePowerSetpointProperty(): Failed to retrieve max power sepoint" );
         return;
@@ -115,13 +126,15 @@ void SkyraLaser::CreatePowerSetpointProperty( const int line )
 
     const double maxPowerSetpoint = atof( maxPowerSetpointResponse.c_str() );
     
-    MutableDeviceProperty* property = new NumericProperty<double>( "Power Setpoint [" + powerUnit_ + "]", laserDriver_, "glp?", "slp", 0.0f, maxPowerSetpoint );
+    MutableDeviceProperty* property = new NumericProperty<double>( MakeLineName( line ) + " Power Setpoint [" + powerUnit_ + "]",
+        laserDriver_, MakeLineCommand( "glp?", line ), MakeLineCommand( "slp", line ), 0.0f, maxPowerSetpoint );
     RegisterPublicProperty( property );
 }
 
 void SkyraLaser::CreatePowerReadingProperty( const int line )
 {
-    DeviceProperty* property = new DeviceProperty( Property::String, "Power Reading [" + powerUnit_ + "]", laserDriver_, "pa?" );
+    DeviceProperty* property = new DeviceProperty( Property::String, MakeLineName( line ) + " Power Reading [" + powerUnit_ + "]",
+        laserDriver_, MakeLineCommand( "pa?", line ) );
     property->SetCaching( false );
     RegisterPublicProperty( property );
 }
@@ -155,33 +168,33 @@ void SkyraLaser::CreateLaserStateProperty()
 
 void SkyraLaser::CreateShutterProperty()
 {
-    shutter_ = new legacy::no_shutter_command::LaserShutterPropertySkyra( "Emission Status", laserDriver_, this );
-
     if ( IsShutterCommandSupported() ) {
         //shutter_ = new LaserShutterProperty( "Emission Status", laserDriver_, this ); // TODO: Fix once there is a shutter command on Skyra
     } else {
-
-        //shutter_ = new legacy::no_shutter_command::LaserShutterPropertySkyra( "Emission Status", laserDriver_, this );
+        shutter_ = new legacy::no_shutter_command::skyra::LaserShutterProperty( "Emission Status", laserDriver_, this );
     }
-
+    
     RegisterPublicProperty( shutter_ );
 }
 
 void SkyraLaser::CreateRunModeProperty( const int line )
 {
-    //EnumerationProperty* property;
-    //
-    //if ( IsShutterCommandSupported() || !IsInCdrhMode() ) {
-    //    property = new EnumerationProperty( "Run Mode", laserDriver_, "gam?" );
-    //} else {
-    //    property = new legacy::no_shutter_command::LaserRunModeProperty( "Run Mode", laserDriver_, "gam?", this );
-    //}
-    //
-    //property->SetCaching( false );
+    EnumerationProperty* property = new EnumerationProperty( MakeLineName( line ) + "Run Mode", laserDriver_, MakeLineCommand( "gam?", line ) );
+    property->SetCaching( false );
 
-    //property->RegisterEnumerationItem( "0", "ecc", EnumerationItem_RunMode_ConstantCurrent );
-    //property->RegisterEnumerationItem( "1", "ecp", EnumerationItem_RunMode_ConstantPower );
-    //property->RegisterEnumerationItem( "2", "em", EnumerationItem_RunMode_Modulation );
-    //
-    //RegisterPublicProperty( property );
+    property->RegisterEnumerationItem( "0", MakeLineCommand( "ecc", line ), EnumerationItem_RunMode_ConstantCurrent );
+    property->RegisterEnumerationItem( "1", MakeLineCommand( "ecp", line ), EnumerationItem_RunMode_ConstantPower );
+    property->RegisterEnumerationItem( "2", MakeLineCommand( "em",  line ), EnumerationItem_RunMode_Modulation );
+    
+    RegisterPublicProperty( property );
+}
+
+std::string SkyraLaser::MakeLineCommand( std::string command, const int line )
+{
+    return std::to_string( (long long) line ) + command;
+}
+
+std::string SkyraLaser::MakeLineName( const int line )
+{
+    return ( "Line " + std::to_string( (long long) line ) );
 }

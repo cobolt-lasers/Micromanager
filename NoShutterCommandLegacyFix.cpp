@@ -183,7 +183,10 @@ int LaserShutterPropertyCdrh::RestoreState()
 const std::string LaserShutterPropertyOem::Value_Open = "open";
 const std::string LaserShutterPropertyOem::Value_Closed = "closed";
 
-const std::string LaserShutterPropertySkyra::Value_Open = "open";
-const std::string LaserShutterPropertySkyra::Value_Closed = "closed";
+const std::string skyra::LineActivationProperty::Value_Active = "active";
+const std::string skyra::LineActivationProperty::Value_Inactive = "inactive";
+
+const std::string skyra::LaserShutterProperty::Value_Open = "open";
+const std::string skyra::LaserShutterProperty::Value_Closed = "closed";
 
 NAMESPACE_COBOLT_END

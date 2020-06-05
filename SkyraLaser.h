@@ -47,6 +47,8 @@ public:
 
 protected:
 
+    void CreateLineActivationProperty( const int line );
+    void CreateWavelengthProperty( const int line );
     void CreateCurrentSetpointProperty( const int line );
     void CreateCurrentReadingProperty( const int line );
     void CreatePowerSetpointProperty( const int line );
@@ -56,6 +58,11 @@ protected:
 
     void CreateShutterProperty();
     void CreateRunModeProperty( const int line );
+
+private:
+
+    std::string MakeLineCommand( std::string command, const int line );
+    std::string MakeLineName( const int line );
 };
 
 NAMESPACE_COBOLT_END
