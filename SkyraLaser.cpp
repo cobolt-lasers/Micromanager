@@ -26,7 +26,7 @@
 //                HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 //                OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 //                SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
+//
 // AUTHORS:
 //                Lukas Kalinski / lukas.kalinski@coboltlasers.com (2020)
 //
@@ -78,11 +78,11 @@ SkyraLaser::SkyraLaser( LaserDriver* driver ) :
 
 void SkyraLaser::CreateLineActivationProperty( const int line )
 {
-    using namespace legacy::no_shutter_command::skyra;
+    using namespace legacy::no_shutter_command;
     
-    LineActivationProperty* lineActivationProperty = new LineActivationProperty( line, MakeLineName( line ), laserDriver_, this );
+    skyra::LineActivationProperty* lineActivationProperty = new skyra::LineActivationProperty( line, MakeLineName( line ), laserDriver_, this );
     RegisterPublicProperty( lineActivationProperty );
-    ( ( LaserShutterProperty* )shutter_ )->RegisterLineActivationProperty( lineActivationProperty );
+    ( ( skyra::LaserShutterProperty* )shutter_ )->RegisterLineActivationProperty( lineActivationProperty );
 }
 
 void SkyraLaser::CreateWavelengthProperty( const int line )
@@ -179,7 +179,7 @@ void SkyraLaser::CreateShutterProperty()
 
 void SkyraLaser::CreateRunModeProperty( const int line )
 {
-    EnumerationProperty* property = new EnumerationProperty( MakeLineName( line ) + "Run Mode", laserDriver_, MakeLineCommand( "gam?", line ) );
+    EnumerationProperty* property = new EnumerationProperty( MakeLineName( line ) + " Run Mode", laserDriver_, MakeLineCommand( "gam?", line ) );
     property->SetCaching( false );
 
     property->RegisterEnumerationItem( "0", MakeLineCommand( "ecc", line ), EnumerationItem_RunMode_ConstantCurrent );

@@ -34,6 +34,7 @@
 #define __COBOLT__NO_SHUTTER_COMMAND_LEGACY_FIX_H
 
 #include "EnumerationProperty.h"
+#include "LaserShutterProperty.h"
 #include "NumericProperty.h"
 #include "Laser.h"
 
@@ -280,12 +281,9 @@ namespace legacy
             PersistedLaserState laserStatePersistence_;
         };
 
-        class LaserShutterPropertyCdrh : public MutableDeviceProperty
+        class LaserShutterPropertyCdrh : public cobolt::LaserShutterProperty
         {
         public:
-
-            static const std::string Value_Open;
-            static const std::string Value_Closed;
 
             LaserShutterPropertyCdrh( const std::string& name, LaserDriver* laserDriver, Laser* laser );
             
@@ -299,26 +297,19 @@ namespace legacy
             int SaveState();
             int RestoreState();
 
-            Laser* laser_;
-            bool isOpen_;
             PersistedLaserState laserStatePersistence_;
         };
 
-        class LaserShutterPropertyOem : public EnumerationProperty
+        class LaserShutterPropertyOem : public cobolt::LaserShutterProperty
         {
             typedef EnumerationProperty Parent;
 
         public:
 
-            static const std::string Value_Open;
-            static const std::string Value_Closed;
-
             LaserShutterPropertyOem( const std::string& name, LaserDriver* laserDriver, Laser* laser ) :
-                EnumerationProperty( name, laserDriver, "l?" ),
+                cobolt::LaserShutterProperty( name, laserDriver, laser, "l0", "l1" ),
                 laser_( laser )
             {
-                RegisterEnumerationItem( "0", "l0", Value_Closed );
-                RegisterEnumerationItem( "1", "l1", Value_Open );
             }
 
             virtual int SetValue( const std::string& value )
@@ -401,22 +392,24 @@ namespace legacy
 
             private:
 
+                /**
+                 * Value set by user, in GUI this hides actual value and only presents what the user
+                 * wants, as actual value toggles between active/inactive as a result of shuttering
+                 * the laser.
+                 */
                 std::string userValue_;
+                
                 Laser* laser_;
             };
 
-            class LaserShutterProperty : public MutableDeviceProperty
+            class LaserShutterProperty : public cobolt::LaserShutterProperty
             {
                 typedef MutableDeviceProperty Parent;
 
             public:
 
-                static const std::string Value_Open;
-                static const std::string Value_Closed;
-
                 LaserShutterProperty( const std::string& name, LaserDriver* laserDriver, Laser* laser ) :
-                    MutableDeviceProperty( Property::String, name, laserDriver, "N/A" ),
-                    laser_( laser )
+                    cobolt::LaserShutterProperty( name, laserDriver, laser )
                 {
                 }
 
@@ -435,28 +428,13 @@ namespace legacy
 
                 virtual int GetValue( std::string& string ) const
                 {
-                    int returnCode = return_code::ok;
-                    std::string lineValue;
-
-                    std::vector<LineActivationProperty*>::const_iterator p = lineActivationProperties_.begin();
-                    while ( p != lineActivationProperties_.end() ) {
-                        
-                        returnCode = ( *p )->GetValue( lineValue );
-
-                        if ( returnCode != return_code::ok ) {
-                            return returnCode;
-                        }
-
-                        if ( lineValue == Value_Open ) {
-                            string = Value_Open;
-                            return returnCode;
-                        }
-
-                        p++;
+                    if ( IsOpen() ) {
+                        string = Value_Open;
+                    } else {
+                        string = Value_Closed;
                     }
-
-                    string = Value_Closed;
-                    return returnCode;
+                    
+                    return return_code::ok;
                 }
 
                 virtual int SetValue( const std::string& value )
@@ -481,6 +459,8 @@ namespace legacy
                             p++;
                         }
 
+                        isOpen_ = true;
+
                     } else {
 
                         std::vector<LineActivationProperty*>::iterator p = lineActivationProperties_.begin();
@@ -494,6 +474,8 @@ namespace legacy
 
                             p++;
                         }
+
+                        isOpen_ = false;
                     }
 
                     return returnCode;
@@ -501,7 +483,6 @@ namespace legacy
 
             private:
 
-                Laser* laser_;
                 std::vector<LineActivationProperty*> lineActivationProperties_;
             };
         }

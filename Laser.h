@@ -45,6 +45,7 @@ NAMESPACE_COBOLT_BEGIN
 
 class LaserDriver;
 class LaserStateProperty;
+class LaserShutterProperty;
 class MutableDeviceProperty;
 
 class Laser
@@ -134,7 +135,7 @@ protected:
 
     LaserStateProperty* laserStateProperty_;
     MutableDeviceProperty* laserOnOffProperty_;
-    MutableDeviceProperty* shutter_;
+    LaserShutterProperty* shutter_;
 };
 
 NAMESPACE_COBOLT_END

@@ -26,7 +26,7 @@
 //                HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 //                OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 //                SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
+//
 // AUTHORS:
 //                Lukas Kalinski / lukas.kalinski@coboltlasers.com (2020)
 
@@ -47,11 +47,15 @@ public:
     static const std::string Value_Closed;
 
     LaserShutterProperty( const std::string& name, LaserDriver* laserDriver, Laser* laser );
+    LaserShutterProperty( const std::string& name, LaserDriver* laserDriver, Laser* laser,
+        const std::string& closeCommand, const std::string& openCommand );
     
     virtual int GetValue( std::string& string ) const;
     virtual int SetValue( const std::string& );
 
-private:
+    virtual bool IsOpen() const;
+
+protected:
 
     Laser* laser_;
     bool isOpen_;

@@ -36,13 +36,8 @@ NAMESPACE_COBOLT_BEGIN
 
 using namespace legacy::no_shutter_command;
 
-const std::string LaserShutterPropertyCdrh::Value_Open = "open";
-const std::string LaserShutterPropertyCdrh::Value_Closed = "closed";
-
 LaserShutterPropertyCdrh::LaserShutterPropertyCdrh( const std::string& name, LaserDriver* laserDriver, Laser* laser ) :
-    MutableDeviceProperty( Property::String, name, laserDriver, "N/A" ),
-    laser_( laser ),
-    isOpen_( false ),
+    cobolt::LaserShutterProperty( name, laserDriver, laser ),
     laserStatePersistence_( laserDriver )
 {
     if ( laserStatePersistence_.PersistedStateExists() ) { // Without this GetIsShutterOpen() may return false negatives.
@@ -78,7 +73,7 @@ int LaserShutterPropertyCdrh::IntroduceToGuiEnvironment( GuiEnvironment* environ
 
 int LaserShutterPropertyCdrh::GetValue( std::string& string ) const
 {
-    if ( isOpen_ ) {
+    if ( IsOpen() ) {
         string = Value_Open;
     } else {
         string = Value_Closed;
@@ -97,7 +92,7 @@ int LaserShutterPropertyCdrh::SetValue( const std::string& value )
 
     if ( value == Value_Closed ) { // Shutter 'closed' requested.
 
-        if ( isOpen_ ) { // Only do this if we're really open, otherwise we will save the 'closed' state.
+        if ( IsOpen() ) { // Only do this if we're really open, otherwise we will save the 'closed' state.
 
             isOpen_ = false;
             SaveState();
@@ -112,7 +107,7 @@ int LaserShutterPropertyCdrh::SetValue( const std::string& value )
     } else if ( value == Value_Open ) { // Shutter 'open' requested.
         
         // Only if not already open:
-        if ( !isOpen_ ) {
+        if ( !IsOpen() ) {
 
             isOpen_ = true;
             RestoreState();
@@ -138,7 +133,7 @@ int LaserShutterPropertyCdrh::SaveState()
     laserDriver_->SendCommand( "glc?", &currentSetpoint );
     if ( returnCode != return_code::ok ) { return returnCode; }
 
-    laserStatePersistence_.PersistState( isOpen_, runmode, currentSetpoint );
+    laserStatePersistence_.PersistState( IsOpen(), runmode, currentSetpoint );
 
     return returnCode;
 }
@@ -180,13 +175,7 @@ int LaserShutterPropertyCdrh::RestoreState()
     return returnCode;
 }
 
-const std::string LaserShutterPropertyOem::Value_Open = "open";
-const std::string LaserShutterPropertyOem::Value_Closed = "closed";
-
 const std::string skyra::LineActivationProperty::Value_Active = "active";
 const std::string skyra::LineActivationProperty::Value_Inactive = "inactive";
-
-const std::string skyra::LaserShutterProperty::Value_Open = "open";
-const std::string skyra::LaserShutterProperty::Value_Closed = "closed";
 
 NAMESPACE_COBOLT_END

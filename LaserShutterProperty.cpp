@@ -26,7 +26,7 @@
 //                HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 //                OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 //                SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
+//
 // AUTHORS:
 //                Lukas Kalinski / lukas.kalinski@coboltlasers.com (2020)
 
@@ -43,13 +43,23 @@ LaserShutterProperty::LaserShutterProperty( const std::string& name, LaserDriver
     laser_( laser ),
     isOpen_( false )
 {
-    RegisterEnumerationItem( "N/A", "l1r", Value_Open );
     RegisterEnumerationItem( "N/A", "l0r", Value_Closed );
+    RegisterEnumerationItem( "N/A", "l1r", Value_Open );
+}
+
+LaserShutterProperty::LaserShutterProperty( const std::string& name, LaserDriver* laserDriver, Laser* laser,
+    const std::string& closeCommand, const std::string& openCommand ) :
+    EnumerationProperty( name, laserDriver, "N/A" ),
+    laser_( laser ),
+    isOpen_( false )
+{
+    RegisterEnumerationItem( "N/A", closeCommand, Value_Closed );
+    RegisterEnumerationItem( "N/A", openCommand, Value_Open );
 }
 
 int LaserShutterProperty::GetValue( std::string& string ) const
 {
-    if ( isOpen_ ) {
+    if ( IsOpen() ) {
         string = Value_Open;
     } else {
         string = Value_Closed;
@@ -72,6 +82,11 @@ int LaserShutterProperty::SetValue( const std::string& value )
     }
 
     return returnCode;
+}
+
+bool LaserShutterProperty::IsOpen() const
+{
+    return isOpen_;
 }
 
 NAMESPACE_COBOLT_END

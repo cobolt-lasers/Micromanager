@@ -154,7 +154,7 @@ bool Laser::IsShutterOpen() const
         return false;
     }
 
-    return ( shutter_->GetValue() == LaserShutterProperty::Value_Open );
+    return ( shutter_->IsOpen() );
 }
 
 Property* Laser::GetProperty( const std::string& name ) const

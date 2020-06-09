@@ -99,7 +99,6 @@ int EnumerationProperty::SetValue( const std::string& enumerationItemName )
     return return_code::invalid_property_value;
 }
 
-
 bool EnumerationProperty::IsValidValue( const std::string& enumerationItemName )
 {
     return ( ResolveDeviceValue( enumerationItemName ) != "" );
