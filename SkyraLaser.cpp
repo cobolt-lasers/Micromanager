@@ -226,8 +226,8 @@ double SkyraLaser::MaxCurrentSetpoint( const int line )
     std::string maxCurrentSetpointResponse;
     if ( laserDriver_->SendCommand( MakeLineCommand( "gmlc?", line ), &maxCurrentSetpointResponse ) != return_code::ok ) {
 
-        Logger::Instance()->LogError( "SkyraLaser::CreateModulationCurrentLowSetpointProperty(): Failed to retrieve max current sepoint" );
-        return 0.0;
+        Logger::Instance()->LogError( "SkyraLaser::MaxCurrentSetpoint(): Failed to retrieve max current sepoint" );
+        return 0.0f;
     }
 
     return atof( maxCurrentSetpointResponse.c_str() );
