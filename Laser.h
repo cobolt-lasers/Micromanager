@@ -127,6 +127,8 @@ protected:
     bool IsInCdrhMode() const;
 
     void RegisterPublicProperty( Property* );
+
+    double MaxCurrentSetpoint();
     
     std::map<std::string, cobolt::Property*> properties_;
     
