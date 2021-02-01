@@ -60,7 +60,7 @@ namespace return_code
     const int unsupported_device_property_value = 101006;
 }
 
-#define COBOLT_MM_DRIVER_VERSION "1.0.2a"
+#define COBOLT_MM_DRIVER_VERSION "1.0.2"
 
 NAMESPACE_COBOLT_END
 
